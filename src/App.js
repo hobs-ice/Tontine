@@ -196,6 +196,7 @@ function CreateView({ onCreate, onBack }) {
   const [goal, setGoal] = useState("");
   const [months, setMonths] = useState("");
   const [payMethod, setPayMethod] = useState("stripe");
+  const [iban, setIban] = useState('');
   const [memberInput, setMemberInput] = useState("");
   const [members, setMembers] = useState([{ id: 0, name: "Moi", isCreator: true, active: true, joined: 1 }]);
 
@@ -220,10 +221,10 @@ function CreateView({ onCreate, onBack }) {
   const canCreate = canNext1 && members.length >= 2;
 
   const handle = () => {
-    const base = { type, name, payMethod, started: false, currentMonth: 1, payments: {}, banVotes: {}, banCandidates: [] };
-    if (type === "tontine") onCreate({ ...base, amount: Number(amount), members });
-    else onCreate({ ...base, goal: Number(goal), months: Number(months), members, unlockVotes: {}, redistributeVotes: {}, refundRequests: [] });
-  };
+  const base = { type, name, payMethod, iban, started: false, currentMonth: 1, payments: {}, banVotes: {}, banCandidates: [] };
+  if (type === "tontine") onCreate({ ...base, amount: Number(amount), members });
+  else onCreate({ ...base, goal: Number(goal), months: Number(months), members, unlockVotes: {}, redistributeVotes: {}, refundRequests: [] });
+};
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "32px 16px" }}>
@@ -282,6 +283,14 @@ function CreateView({ onCreate, onBack }) {
           ))}
         </div>
       </Card>
+      {payMethod === 'virement' && (
+  <Card style={{ marginBottom: 10 }}>
+    <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 6 }}>IBAN (optionnel)</div>
+    <input value={iban} onChange={e => setIban(e.target.value.toUpperCase())}
+      placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
+      style={{ width: "100%", background: C.subtle, border: "none", borderRadius: 8, padding: "10px 12px", color: C.text, outline: "none", fontSize: 13, letterSpacing: ".05em" }} />
+  </Card>
+)}
 
       {/* membres */}
       <Card style={{ marginBottom: 10 }}>
@@ -462,11 +471,21 @@ function TontineDetail({ group, onBack, onUpdate }) {
       {tab === "payments" && (
         <div className="fade-in">
           {payMethod === "virement" && (
-            <Card style={{ marginBottom: 12, borderColor: C.purple + "40", background: C.purpleDim }}>
-              <div style={{ fontSize: 11, color: C.purple, fontWeight: 600, marginBottom: 4 }}>🏦 Mode virement</div>
-              <div style={{ fontSize: 12, color: C.muted }}>Le créateur confirme chaque versement manuellement. Fenêtre : 1 au 28 du mois.</div>
-            </Card>
-          )}
+  <Card style={{ marginBottom: 12, borderColor: C.purple + "40", background: C.purpleDim }}>
+    <div style={{ fontSize: 11, color: C.purple, fontWeight: 600, marginBottom: 4 }}>🏦 Mode virement</div>
+    <div style={{ fontSize: 12, color: C.muted, marginBottom: group.iban ? 8 : 0 }}>Le créateur confirme chaque versement manuellement. Fenêtre : 1 au 28 du mois.</div>
+    {group.iban && (
+      <div style={{ background: C.subtle, borderRadius: 8, padding: "10px 12px" }}>
+        <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>IBAN pour virement</div>
+        <div style={{ fontSize: 14, color: C.text, fontWeight: 700, letterSpacing: ".05em" }}>{group.iban}</div>
+        <button onClick={() => navigator.clipboard.writeText(group.iban).then(() => alert('IBAN copié !'))}
+          style={{ background: 'none', border: 'none', color: C.purple, fontSize: 11, cursor: 'pointer', marginTop: 4, fontWeight: 600 }}>
+          📋 Copier l'IBAN
+        </button>
+      </div>
+    )}
+  </Card>
+)}
           {payMethod === "stripe" && (
             <Card style={{ marginBottom: 12, borderColor: C.purple + "40", background: C.purpleDim }}>
               <div style={{ fontSize: 11, color: C.purple, fontWeight: 600, marginBottom: 4 }}>⚡ Prélèvement Stripe automatique</div>
@@ -881,6 +900,7 @@ export default function App() {
       months: groupData.months || null,
       current_month: 1,
       pay_method: groupData.payMethod,
+      iban: groupData.iban || null,
       started: false,
       creator_id: session.user.id 
     }])
