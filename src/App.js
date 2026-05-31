@@ -190,7 +190,7 @@ function HomeView({ groups, onNew, onOpen, onLogout }) {
 // ── CREATE ────────────────────────────────────────────────────
 function CreateView({ onCreate, onBack }) {
   const [type, setType] = useState("tontine");
-  const [step] = useState(1);
+  const [step] = useState(1); // eslint-disable-line no-unused-vars
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [goal, setGoal] = useState("");
@@ -819,7 +819,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-// eslint-disable-next-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -832,8 +832,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (session) loadGroups();
-   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (session) loadGroups();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [session]);
+
 
  const loadGroups = async () => {
   const { data, error } = await supabase
