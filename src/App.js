@@ -96,44 +96,7 @@ function FeeNote({ amount }) {
   </div>;
 }
 
-// ── DATA ──────────────────────────────────────────────────────
-const DEMO_GROUPS = [
-  {
-    id: 1, type: "tontine", name: "Tontine des potes", amount: 100, currentMonth: 2, started: true,
-    payMethod: "stripe",
-    members: [
-      { id: 0, name: "Amilcar", isCreator: true, active: true, joined: 1 },
-      { id: 1, name: "Béatrice", isCreator: false, active: true, joined: 2 },
-      { id: 2, name: "Carlos", isCreator: false, active: true, joined: 3 },
-      { id: 3, name: "Dounia", isCreator: false, active: true, joined: 4 },
-    ],
-    payments: {
-      0: { 0: true, 1: true, 2: true, 3: true },
-      1: { 0: true, 1: false, 2: false, 3: false },
-    },
-    banVotes: {},
-    banCandidates: [],
-  },
-  {
-    id: 2, type: "cagnotte", name: "Voyage Maroc 🇲🇦", goal: 1000, months: 6, currentMonth: 3, started: true,
-    payMethod: "virement",
-    members: [
-      { id: 0, name: "Amilcar", isCreator: true, active: true },
-      { id: 1, name: "Béatrice", isCreator: false, active: true },
-      { id: 2, name: "Carlos", isCreator: false, active: true },
-      { id: 3, name: "Dounia", isCreator: false, active: true },
-    ],
-    payments: {
-      0: { 0: true, 1: true, 2: true, 3: true },
-      1: { 0: true, 1: true, 2: true, 3: false },
-      2: { 0: true, 1: false, 2: false, 3: false },
-    },
-    unlockVotes: {},
-    redistributeVotes: {},
-    banVotes: {},
-    refundRequests: [],
-  },
-];
+
 
 // ── HOME ──────────────────────────────────────────────────────
 function HomeView({ groups, onNew, onOpen, onLogout }) {
@@ -227,7 +190,7 @@ function HomeView({ groups, onNew, onOpen, onLogout }) {
 // ── CREATE ────────────────────────────────────────────────────
 function CreateView({ onCreate, onBack }) {
   const [type, setType] = useState("tontine");
-  const [step, setStep] = useState(1);
+  const [step] = useState(1);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [goal, setGoal] = useState("");
@@ -701,7 +664,7 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
     return s;
   })();
 
-  const netGoal = Math.round(goal * 0.96 * 100) / 100;
+ 
   const allPaidThisMonth = active.every(m => monthPaid(currentMonth - 1, m.id));
 
   const tabs = [
@@ -867,7 +830,7 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
-
+// eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (session) loadGroups();
   }, [session]);
