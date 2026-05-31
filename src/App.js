@@ -819,7 +819,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-
+// eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -830,7 +830,7 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
-// eslint-disable-next-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (session) loadGroups();
   }, [session]);
