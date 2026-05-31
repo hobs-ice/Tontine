@@ -833,7 +833,7 @@ export default function App() {
 
   useEffect(() => {
     if (session) loadGroups();
-  }, [session]);
+   }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
 
  const loadGroups = async () => {
   const { data, error } = await supabase
