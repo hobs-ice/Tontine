@@ -245,7 +245,7 @@ function CreateView({ onCreate, onBack }) {
       {/* nom */}
       <Card style={{ marginBottom: 10 }}>
         <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 8 }}>NOM DU GROUPE</div>
-        <input value={name} onChange={e => setName(e.target.value)} placeholder={type === "tontine" ? "Tontine des potes" : "Voyage Maroc 🇲🇦"}
+        <input value={name} onChange={e => setName(e.target.value)} placeholder={type === "tontine" ? "Tontine des potes" : "Voyage Seychelles 🇸🇨"}
           style={{ width: "100%", background: "transparent", border: "none", outline: "none", color: C.text, fontSize: 18, fontFamily: "'Syne',sans-serif", fontWeight: 700 }} />
       </Card>
 
@@ -341,8 +341,139 @@ function CreateView({ onCreate, onBack }) {
   );
 }
 
+function InviteAccept({ invites, session, onDone }) {
+  const acceptInvite = async (invite) => {
+  await supabase
+    .from('invitations')
+    .update({ status: 'accepted' })
+    .eq('id', invite.id);
+
+  if (invite.member_id) {
+    // Mettre à jour le membre spécifique
+    await supabase
+      .from('group_members')
+      .update({ user_id: session.user.id })
+      .eq('id', invite.member_id);
+  } else {
+    // Créer un nouveau membre
+    await supabase
+      .from('group_members')
+      .insert({
+        group_id: invite.group_id,
+        user_id: session.user.id,
+        name: session.user.email.split('@')[0],
+        is_creator: false,
+        active: true,
+        join_order: 99,
+      });
+  }
+
+  onDone();
+};
+
+
+  const declineInvite = async (invite) => {
+    await supabase
+      .from('invitations')
+      .update({ status: 'declined' })
+      .eq('id', invite.id);
+    onDone();
+  };
+
+  return (
+    <div style={{ maxWidth: 480, margin: '0 auto', padding: '32px 16px', background: C.bg, minHeight: '100vh' }}>
+      <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800, color: C.text, marginBottom: 24 }}>
+        🫂 Invitations en attente
+      </div>
+      {invites.map((invite, i) => (
+        <div key={i} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 18, padding: 20, marginBottom: 12 }}>
+          <div style={{ fontSize: 14, color: C.text, fontWeight: 600, marginBottom: 6 }}>
+            {invite.groups?.name}
+          </div>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 16 }}>
+  Tu as été invité à rejoindre <strong style={{ color: C.accent }}>{invite.groups?.name}</strong>
+</div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => acceptInvite(invite)}
+              style={{ flex: 1, background: C.green, border: 'none', borderRadius: 10, padding: '10px', color: '#080b12', fontWeight: 700, cursor: 'pointer' }}>
+              ✅ Accepter
+            </button>
+            <button onClick={() => declineInvite(invite)}
+              style={{ flex: 1, background: C.redDim, border: `1px solid ${C.red}`, borderRadius: 10, padding: '10px', color: C.red, fontWeight: 700, cursor: 'pointer' }}>
+              ❌ Refuser
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function InviteForm({ groupId, members }) {
+  
+  const [email, setEmail] = useState('');
+  const [memberId, setMemberId] = useState('');
+  const [status, setStatus] = useState('');
+  
+  const sendInvite = async () => {
+  if (!email.trim() || !memberId) {
+    setStatus('⚠️ Sélectionne un membre et entre un email');
+    setTimeout(() => setStatus(''), 3000);
+    return;
+  }
+    const { error } = await supabase
+      .from('invitations')
+      .insert({ 
+        group_id: groupId, 
+        email: email.trim().toLowerCase(),
+        member_id: memberId || null
+      });
+    
+    if (!error) {
+      setStatus('✅ Invitation envoyée !');
+      setEmail('');
+      setMemberId('');
+    } else {
+      setStatus('❌ Erreur');
+    }
+    setTimeout(() => setStatus(''), 3000);
+  };
+
+  return (
+    <div>
+      <select value={memberId} onChange={e => setMemberId(e.target.value)}
+        style={{ width: '100%', background: C.subtle, border: 'none', borderRadius: 8, padding: '8px 12px', color: C.text, outline: 'none', fontSize: 13, marginBottom: 8 }}>
+        <option value="">Sélectionner un membre</option>
+        {members.filter(m => !m.user_id && !m.is_creator).map(m => (
+          <option key={m.id} value={m.id}>{m.name}</option>
+        ))}
+      </select>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input value={email} onChange={e => setEmail(e.target.value)}
+          placeholder="email@exemple.com"
+          onKeyDown={e => e.key === 'Enter' && sendInvite()}
+          style={{ flex: 1, background: C.subtle, border: 'none', borderRadius: 8, padding: '8px 12px', color: C.text, outline: 'none', fontSize: 13 }} />
+        <button onClick={sendInvite} disabled={!email || !memberId}
+  style={{ 
+    background: !email || !memberId ? C.subtle : C.accent, 
+    border: 'none', 
+    borderRadius: 8, 
+    padding: '8px 14px', 
+    color: !email || !memberId ? C.muted : '#080b12', 
+    fontWeight: 700, 
+    cursor: !email || !memberId ? 'not-allowed' : 'pointer', 
+    fontSize: 12 
+  }}>
+  Inviter
+</button>
+
+      </div>
+      {status && <div style={{ fontSize: 12, marginTop: 6, color: C.green }}>{status}</div>}
+    </div>
+  );
+}
 // ── TONTINE DETAIL ────────────────────────────────────────────
-function TontineDetail({ group, onBack, onUpdate }) {
+function TontineDetail({ group, onBack, onUpdate, session }) {
   const [tab, setTab] = useState("dashboard");
   const { name, amount, members, currentMonth, payments, banVotes, payMethod } = group;
   const active = members.filter(m => m.active);
@@ -432,8 +563,24 @@ function TontineDetail({ group, onBack, onUpdate }) {
             <div style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               <Avatar name={recipient?.name || "?"} size={30} />
               <span style={{ fontSize: 14 }}>Pour <strong>{recipient?.name}</strong> le 5 du mois</span>
+            
+            {group.creator_id === session?.user?.id && (!group.started || currentMonth > members.length) && (
+  <Btn onClick={async () => {
+    if (window.confirm('Archiver ce groupe ?')) {
+      await supabase.from('groups').update({ archived: true }).eq('id', group.id);
+      onBack();
+    }
+  }} color={C.muted} ghost style={{ width: '100%', marginTop: 12 }}>
+    📦 Archiver le groupe
+  </Btn>
+)}
             </div>
           </Card>
+          
+          <Card style={{ marginBottom: 12 }}>
+  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>📧 Inviter un membre</div>
+  <InviteForm groupId={group.id} members={active} />
+</Card>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <Pill label="Versements ce mois" value={`${active.filter(m => monthPaid(currentMonth - 1, m.id)).length}/${active.length}`} color={C.green} />
@@ -726,6 +873,7 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
               <span style={{ fontSize: 11, color: C.teal, fontWeight: 600 }}>{pct(totalCollected, goal)}% atteint</span>
               <span style={{ fontSize: 11, color: C.muted }}>{fmt(goal - Math.round(totalCollected))}€ restants</span>
             </div>
+            
           </Card>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
@@ -838,6 +986,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [pendingInvites, setPendingInvites] = useState([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -855,15 +1004,62 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [session]);
 
+useEffect(() => {
+  if (session) checkInvitations();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [session]);
+
+const checkInvitations = async () => {
+  const { data } = await supabase
+    .from('invitations')
+    .select('*, groups(*)')
+    .eq('email', session.user.email)
+    .eq('status', 'pending');
+  
+  if (data && data.length > 0) {
+    setPendingInvites(data);
+  }
+};
+
 
  const loadGroups = async () => {
-  const { data, error } = await supabase
+  if (!session?.user?.id) return;
+  console.log('Loading groups for user:', session.user.id);
+  const { data: memberData } = await supabase
+    .from('group_members')
+    .select('group_id')
+    .eq('user_id', session.user.id);
+  console.log('Member groups:', memberData);
+  // Groupes créés par l'utilisateur
+  const { data: myGroups } = await supabase
     .from('groups')
     .select(`*, group_members(*), payments(*)`)
     .eq('creator_id', session.user.id);
+
+    
+
+  // Groupes où l'utilisateur est membre via invitation acceptée
+  const groupIds = memberData?.map(m => m.group_id) || [];
+console.log('Group IDs:', groupIds);
+
+const { data: memberGroups } = groupIds.length > 0 ? await supabase
+  .from('groups')
+  .select(`*, group_members(*), payments(*)`)
+  .in('id', groupIds) : { data: [] };
+
+console.log('Member groups loaded:', memberGroups);
+
   
-  if (!error && data) {
-    const normalized = data.map(g => {
+
+
+   const allGroups = [...(myGroups || []), ...(memberGroups || [])];
+  const uniqueGroups = allGroups.filter((g, i, self) => self.findIndex(x => x.id === g.id) === i);
+
+
+
+
+  if (uniqueGroups.length >= 0) {
+    const normalized = uniqueGroups.map(g => {
       // Convertir payments array en objet {mois: {memberId: bool}}
       const paymentsObj = {};
       (g.payments || []).forEach(p => {
@@ -933,6 +1129,16 @@ export default function App() {
     started: groupData.started,
   }).eq('id', updated.id);
 
+  // Vérifier si le groupe doit être marqué comme démarré
+if (!updated.started && payments) {
+  const hasPayment = Object.values(payments).some(monthPayments => 
+    Object.values(monthPayments).some(paid => paid === true)
+  );
+  if (hasPayment) {
+    await supabase.from('groups').update({ started: true }).eq('id', updated.id);
+  }
+}
+
   // Sauvegarder les paiements
   if (payments) {
     for (const [monthStr, memberPayments] of Object.entries(payments)) {
@@ -969,12 +1175,18 @@ console.log('payments keys:', Object.keys(payments));
   );
 
   if (!session) return <Auth />;
+  if (pendingInvites.length > 0) return <InviteAccept 
+  invites={pendingInvites} 
+  session={session}
+  onDone={() => { setPendingInvites([]); loadGroups(); }} 
+/>;
+
 
   if (view === "create") return <CreateView onCreate={handleCreate} onBack={() => setView("home")} />;
   if (view === "detail") {
     const g = groups.find(x => x.id === activeId);
     if (!g) return null;
-    const props = { group: g, onBack: () => setView("home"), onUpdate: updateGroup };
+    const props = { group: g, onBack: () => setView("home"), onUpdate: updateGroup, session };
     return g.type === "tontine" ? <TontineDetail {...props} /> : <CagnotteDetail {...props} />;
   }
   return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} />;
