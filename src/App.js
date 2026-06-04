@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import Auth from './Auth';
+import Profile from './Profile';
 
 // ── DESIGN TOKENS ─────────────────────────────────────────────
 const C = {
@@ -35,6 +36,7 @@ const fmt = n => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, m
 const pct = (a, b) => b === 0 ? 0 : Math.round(a / b * 100);
 const today = new Date();
 const DAY = today.getDate();
+
 
 function Avatar({ name, size = 36 }) {
   const i = name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
@@ -99,7 +101,8 @@ function FeeNote({ amount }) {
 
 
 // ── HOME ──────────────────────────────────────────────────────
-function HomeView({ groups, onNew, onOpen, onLogout }) {
+function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile }) {
+  console.log('Profile in HomeView:', profile);
   const tontines = groups.filter(g => g.type === "tontine");
   
   const cagnottes = groups.filter(g => g.type === "cagnotte");
@@ -154,8 +157,15 @@ function HomeView({ groups, onNew, onOpen, onLogout }) {
       <div style={{ marginBottom: 32 }}>
         <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 30, fontWeight: 800, letterSpacing: "-.03em" }}>🫂 Tontine</div>
         <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>L'épargne collective entre amis</div>
-        <button onClick={onLogout} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12 }}>
-  Déconnexion
+       <button onClick={onProfile} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+  {profile?.avatar_url ? (
+    <img src={profile.avatar_url} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+  ) : (
+    <span style={{ fontSize: 20 }}>👤</span>
+  )}
+</button> <span style={{ color: C.muted, fontSize: 12 }}>|</span>   
+             <button onClick={onLogout} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12 }}>
+   Déconnexion
 </button>
       </div>
 
@@ -199,6 +209,7 @@ function CreateView({ onCreate, onBack }) {
   const [iban, setIban] = useState('');
   const [memberInput, setMemberInput] = useState("");
   const [members, setMembers] = useState([{ id: 0, name: "Moi", isCreator: true, active: true, joined: 1 }]);
+
 
   const color = type === "tontine" ? C.accent : C.teal;
   const monthly = type === "cagnotte" && Number(goal) > 0 && members.length > 0 && Number(months) > 0
@@ -987,7 +998,8 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [pendingInvites, setPendingInvites] = useState([]);
-
+const [showProfile, setShowProfile] = useState(false);
+const [profile, setProfile] = useState(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -1079,6 +1091,12 @@ console.log('Member groups loaded:', memberGroups);
       };
     });
     setGroups(normalized);
+    const { data: profiles } = await supabase
+  .from('profiles')
+  .select('*')
+  .eq('id', session.user.id);
+if (profiles && profiles.length > 0) setProfile(profiles[0]);
+
   }
 };
 
@@ -1168,19 +1186,21 @@ console.log('payments keys:', Object.keys(payments));
   setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
 };
 
-  if (loading) return (
+   if (loading) return (
     <div style={{ background: '#080b12', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f0b429', fontSize: 24 }}>
       ⏳
     </div>
   );
 
   if (!session) return <Auth />;
-  if (pendingInvites.length > 0) return <InviteAccept 
-  invites={pendingInvites} 
-  session={session}
-  onDone={() => { setPendingInvites([]); loadGroups(); }} 
-/>;
 
+  if (showProfile && session) return <Profile session={session} onBack={() => { setShowProfile(false); loadGroups(); }} />;
+  
+  if (pendingInvites.length > 0) return <InviteAccept 
+    invites={pendingInvites} 
+    session={session}
+    onDone={() => { setPendingInvites([]); loadGroups(); }} 
+  />;
 
   if (view === "create") return <CreateView onCreate={handleCreate} onBack={() => setView("home")} />;
   if (view === "detail") {
@@ -1189,6 +1209,7 @@ console.log('payments keys:', Object.keys(payments));
     const props = { group: g, onBack: () => setView("home"), onUpdate: updateGroup, session };
     return g.type === "tontine" ? <TontineDetail {...props} /> : <CagnotteDetail {...props} />;
   }
-  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} />;
+  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} onProfile={() => setShowProfile(true)} profile={profile} />;
 }
+
 
