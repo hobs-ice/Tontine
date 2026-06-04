@@ -16,8 +16,9 @@ export default function Profile({ session, onBack }) {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (session?.user?.id) loadProfile();
-  }, [session]);
+  if (session?.user?.id) loadProfile();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [session]);
 
   const loadProfile = async () => {
     const { data } = await supabase
