@@ -541,11 +541,12 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
   const color = C.accent;
 
   const tabs = [
-    { id: "dashboard", label: "📊 Tableau" },
-    { id: "payments", label: "💳 Paiements" },
-    { id: "order", label: "📋 Ordre" },
-    { id: "governance", label: "⚖️ Gouvernance" },
-  ];
+  { id: "dashboard", label: "📊 Tableau" },
+  { id: "payments", label: "💳 Paiements" },
+  { id: "history", label: "📈 Historique" },
+  { id: "order", label: "📋 Ordre" },
+  { id: "governance", label: "⚖️ Gouvernance" },
+];
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "24px 16px" }}>
@@ -624,6 +625,54 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
           )}
         </div>
       )}
+
+{/* HISTORY */}
+{tab === "history" && (
+  <div className="fade-in">
+    <Card style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>📈 Historique des paiements</div>
+      {Array.from({ length: currentMonth }, (_, i) => i).map(monthIndex => {
+        const monthPayments = payments[monthIndex] || {};
+        const paidCount = active.filter(m => monthPayments[m.id]).length;
+        const isComplete = paidCount === active.length;
+        const recipientIndex = monthIndex;
+        const monthRecipient = active[recipientIndex] || active[0];
+        return (
+          <div key={monthIndex} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.cardBorder}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 13 }}>
+                Mois {monthIndex + 1}
+              </div>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                {isComplete && <Badge color={C.green}>✓ Complet</Badge>}
+                {!isComplete && monthIndex < currentMonth - 1 && <Badge color={C.red}>⚠ Incomplet</Badge>}
+                {monthIndex === currentMonth - 1 && !isComplete && <Badge color={C.accent}>En cours</Badge>}
+              </div>
+            </div>
+            <div style={{ fontSize: 11, color: C.muted, marginBottom: 8 }}>
+              🎉 Bénéficiaire : <strong style={{ color: C.accent }}>{monthRecipient?.name}</strong> · {fmt(pot * 0.96)}€ net
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {active.map(m => {
+                const isRecipient = m.id === monthRecipient?.id;
+                const paid = isRecipient || monthPayments[m.id];
+                return (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: paid ? C.greenDim : C.redDim, borderRadius: 8, padding: '4px 8px', border: `1px solid ${paid ? C.green : C.red}30` }}>
+                    <span style={{ fontSize: 10 }}>{paid ? '✓' : '✗'}</span>
+                    <span style={{ fontSize: 11, color: paid ? C.green : C.red }}>{m.name}</span>
+                    {isRecipient && <span style={{ fontSize: 10 }}>🎉</span>}
+                  </div>
+                );
+              })}
+            </div>
+            <ProgressBar value={paidCount} max={active.length} color={isComplete ? C.green : C.accent} height={4} />
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>{paidCount}/{active.length} versements</div>
+          </div>
+        );
+      })}
+    </Card>
+  </div>
+)}
 
       {/* PAYMENTS */}
       {tab === "payments" && (
@@ -845,10 +894,12 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
   const allPaidThisMonth = active.every(m => monthPaid(currentMonth - 1, m.id));
 
   const tabs = [
-    { id: "dashboard", label: "📊 Tableau" },
-    { id: "payments", label: "💳 Paiements" },
-    { id: "governance", label: "⚖️ Gouvernance" },
-  ];
+  { id: "dashboard", label: "📊 Tableau" },
+  { id: "payments", label: "💳 Paiements" },
+  { id: "history", label: "📈 Historique" },
+  { id: "governance", label: "⚖️ Gouvernance" },
+];
+
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "24px 16px" }}>
@@ -939,6 +990,49 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
           </Card>
         </div>
       )}
+
+{tab === "history" && (
+  <div className="fade-in">
+    <Card style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>📈 Historique des paiements</div>
+      {Array.from({ length: currentMonth }, (_, i) => i).map(monthIndex => {
+        const monthPayments = payments[monthIndex] || {};
+        const paidCount = active.filter(m => monthPayments[m.id]).length;
+        const isComplete = paidCount === active.length;
+        return (
+          <div key={monthIndex} style={{ marginBottom: 16, paddingBottom: 16, borderBottom: `1px solid ${C.cardBorder}` }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 13 }}>
+                Mois {monthIndex + 1}
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {isComplete && <Badge color={C.green}>✓ Complet</Badge>}
+                {!isComplete && monthIndex < currentMonth - 1 && <Badge color={C.red}>⚠ Incomplet</Badge>}
+                {monthIndex === currentMonth - 1 && !isComplete && <Badge color={C.teal}>En cours</Badge>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {active.map(m => {
+                const paid = monthPayments[m.id];
+                return (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: paid ? C.greenDim : C.redDim, borderRadius: 8, padding: '4px 8px', border: `1px solid ${paid ? C.green : C.red}30` }}>
+                    <span style={{ fontSize: 10 }}>{paid ? '✓' : '✗'}</span>
+                    <span style={{ fontSize: 11, color: paid ? C.green : C.red }}>{m.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <ProgressBar value={paidCount} max={active.length} color={isComplete ? C.green : C.teal} height={4} />
+            <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>
+              {paidCount}/{active.length} versements · {fmt(paidCount * monthly)}€ collectés ce mois
+            </div>
+          </div>
+        );
+      })}
+    </Card>
+  </div>
+)}
+
 
       {tab === "governance" && (
         <div className="fade-in">
