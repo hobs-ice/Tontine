@@ -34,8 +34,7 @@ document.head.appendChild(styleTag);
 // ── HELPERS ───────────────────────────────────────────────────
 const fmt = n => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const pct = (a, b) => b === 0 ? 0 : Math.round(a / b * 100);
-const today = new Date();
-const DAY = 28;
+const DAY = new Date().getDate();
 
 
 function Avatar({ name, size = 36 }) {
