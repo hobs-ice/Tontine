@@ -35,7 +35,7 @@ document.head.appendChild(styleTag);
 const fmt = n => Number(n).toLocaleString("fr-FR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 const pct = (a, b) => b === 0 ? 0 : Math.round(a / b * 100);
 const today = new Date();
-const DAY = today.getDate();
+const DAY = 28;
 
 
 function Avatar({ name, size = 36 }) {
@@ -503,12 +503,33 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
     onUpdate({ ...group, payments: p });
   };
 
-  const castBanVote = (candidateId, vote) => {
-    const bv = { ...group.banVotes };
-    if (!bv[candidateId]) bv[candidateId] = {};
-    bv[candidateId] = { ...bv[candidateId], [myId]: vote };
-    onUpdate({ ...group, banVotes: bv });
-  };
+  const castBanVote = async (candidateId, vote) => {
+  const bv = { ...group.banVotes };
+  if (!bv[candidateId]) bv[candidateId] = {};
+  bv[candidateId] = { ...bv[candidateId], [session?.user?.id || myId]: vote };
+  
+  const updatedGroup = { ...group, banVotes: bv };
+  
+  // Vérifier si la majorité est atteinte
+  const voters = active.filter(m => m.id !== recipient?.id && m.id !== candidateId);
+  const yes = Object.values(bv[candidateId]).filter(v => v === "yes").length;
+  
+  if (yes > voters.length / 2) {
+    // Bannissement confirmé — désactiver le membre dans Supabase
+    const candidate = members.find(m => m.id === candidateId);
+    if (candidate) {
+      await supabase.from('group_members')
+        .update({ active: false })
+        .eq('id', candidate.id);
+      
+      updatedGroup.members = members.map(m => 
+        m.id === candidateId ? { ...m, active: false } : m
+      );
+    }
+  }
+  
+  onUpdate(updatedGroup);
+};
 
   const initiateBan = (memberId) => {
     const bv = { ...group.banVotes };
@@ -588,11 +609,40 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
 )}
             </div>
           </Card>
+          {/* BOUTON TEST ONLY */}
+<Btn onClick={() => onUpdate({ ...group, current_month: (group.current_month || 1) + 1 })} 
+  color={C.muted} ghost small style={{ marginTop: 8 }}>
+  ⏩ Mois suivant (test)
+</Btn>
+
           
           <Card style={{ marginBottom: 12 }}>
   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>📧 Inviter un membre</div>
   <InviteForm groupId={group.id} members={active} />
 </Card>
+
+<Card style={{ marginBottom: 12 }}>
+  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>🔗 Lien d'invitation</div>
+  <div style={{ background: C.subtle, borderRadius: 8, padding: '10px 12px', fontSize: 12, color: C.muted, marginBottom: 10, wordBreak: 'break-all' }}>
+    {`${window.location.origin}/join/${group.invite_token}`}
+  </div>
+  <div style={{ display: 'flex', gap: 8 }}>
+    <button onClick={() => navigator.clipboard.writeText(`${window.location.origin}/join/${group.invite_token}`).then(() => alert('Lien copié !'))}
+      style={{ flex: 1, background: C.subtle, border: 'none', borderRadius: 8, padding: '8px', color: C.text, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+      📋 Copier
+    </button>
+    <a href={`https://wa.me/?text=Rejoins ma tontine "${group.name}" ! ${window.location.origin}/join/${group.invite_token}`}
+      target="_blank" rel="noreferrer"
+      style={{ flex: 1, background: '#25D366', border: 'none', borderRadius: 8, padding: '8px', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600, textDecoration: 'none', textAlign: 'center' }}>
+      💬 WhatsApp
+    </a>
+    <a href={`sms:?body=Rejoins ma tontine "${group.name}" ! ${window.location.origin}/join/${group.invite_token}`}
+      style={{ flex: 1, background: C.teal, border: 'none', borderRadius: 8, padding: '8px', color: 'white', cursor: 'pointer', fontSize: 12, fontWeight: 600, textDecoration: 'none', textAlign: 'center' }}>
+      📱 SMS
+    </a>
+  </div>
+</Card>
+
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <Pill label="Versements ce mois" value={`${active.filter(m => monthPaid(currentMonth - 1, m.id)).length}/${active.length}`} color={C.green} />
@@ -747,7 +797,8 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
             {current && <Badge color={C.accent}>Ce mois</Badge>}
             {!done && !current && !banned && <span style={{ fontSize: 11, color: C.muted }}>Mois {i + 1}</span>}
             {banned && <Badge color={C.red}>Banni</Badge>}
-            {!group.started && !m.is_creator && session?.user?.id === group.creator_id && (
+            {!group.started && !m.is_creator && session?.user?.id === group.creator_id && 
+  !Object.values(payments).some(monthPayments => monthPayments[m.id]) && (
               <button onClick={async () => {
                 if (window.confirm(`Retirer ${m.name} du groupe ?`)) {
                   await supabase.from('group_members').delete().eq('id', m.id);
@@ -793,12 +844,12 @@ onUpdate(updatedGroup);
           )}
 
           {Object.keys(banVotes).map(candidateIdStr => {
-            const candidateId = Number(candidateIdStr);
+            const candidateId = candidateIdStr;
             const candidate = members.find(m => m.id === candidateId);
             if (!candidate) return null;
             const { yes, no, total, majority, tie } = getBanResult(candidateId);
             const myVote = banVotes[candidateId]?.[myId];
-            const alreadyReceived = members.findIndex(m => m.id === candidateId) < currentMonth - 1;
+            const alreadyReceived = members.findIndex(m => String(m.id) === String(candidateId)) < currentMonth - 1;
 
             return (
               <Card key={candidateId} style={{ marginBottom: 12, borderColor: C.red + "40" }}>
@@ -1187,7 +1238,7 @@ console.log('Member groups loaded:', memberGroups);
         currentMonth: g.current_month,
         members: g.group_members || [],
         payments: paymentsObj,
-        banVotes: {},
+        banVotes: g.ban_votes || {},
         banCandidates: [],
         unlockVotes: {},
         redistributeVotes: {},
@@ -1249,6 +1300,7 @@ if (profiles && profiles.length > 0) setProfile(profiles[0]);
   await supabase.from('groups').update({
     current_month: groupData.current_month,
     started: groupData.started,
+    ban_votes: updated.banVotes || {},
   }).eq('id', updated.id);
 
   // Vérifier si le groupe doit être marqué comme démarré
