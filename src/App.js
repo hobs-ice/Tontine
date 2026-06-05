@@ -578,7 +578,7 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
             
             {group.creator_id === session?.user?.id && (!group.started || currentMonth > members.length) && (
   <Btn onClick={async () => {
-    if (window.confirm('Archiver ce groupe ?')) {
+    if (window.confirm('Archiver ce groupe définitivement ?')) {
       await supabase.from('groups').update({ archived: true }).eq('id', group.id);
       onBack();
     }
@@ -730,36 +730,46 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
       )}
 
       {/* ORDER */}
-      {tab === "order" && (
-        <div className="fade-in">
-          <Card>
-            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Ordre de passage</div>
-            {members.map((m, i) => {
-              const done = i < currentMonth - 1;
-              const current = i === currentMonth - 1;
-              const banned = !m.active;
-              return (
-                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, opacity: done ? .4 : 1 }}>
-                  <div style={{ width: 24, height: 24, borderRadius: "50%", background: current ? C.accent : banned ? C.red : C.subtle, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: current ? "#080b12" : C.muted, flexShrink: 0 }}>{i + 1}</div>
-                  <Avatar name={m.name} size={30} />
-                  <div style={{ flex: 1, fontSize: 13 }}>{m.name}{m.isCreator ? " 👑" : ""}</div>
-                  {done && <Badge color={C.muted}>Passé</Badge>}
-                  {current && <Badge color={C.accent}>Ce mois</Badge>}
-                  {!done && !current && !banned && <span style={{ fontSize: 11, color: C.muted }}>Mois {i + 1}</span>}
-                  {banned && <Badge color={C.red}>Banni</Badge>}
-                </div>
-              );
-            })}
-          </Card>
-          {currentMonth === members.filter(m => m.active).length && (
-            <Card style={{ marginTop: 12, borderColor: C.green + "50", background: C.greenDim, textAlign: "center", padding: 24 }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>🎉</div>
-              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: C.green }}>Cycle terminé !</div>
-              <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Tout le monde a reçu sa part. Les prélèvements sont arrêtés.</div>
-            </Card>
-          )}
-        </div>
-      )}
+{tab === "order" && (
+  <div className="fade-in">
+    <Card>
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Ordre de passage</div>
+      {members.map((m, i) => {
+        const done = i < currentMonth - 1;
+        const current = i === currentMonth - 1;
+        const banned = !m.active;
+        return (
+          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, opacity: done ? .4 : 1 }}>
+            <div style={{ width: 24, height: 24, borderRadius: "50%", background: current ? C.accent : banned ? C.red : C.subtle, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: current ? "#080b12" : C.muted, flexShrink: 0 }}>{i + 1}</div>
+            <Avatar name={m.name} size={30} />
+            <div style={{ flex: 1, fontSize: 13 }}>{m.name}{m.isCreator ? " 👑" : ""}</div>
+            {done && <Badge color={C.muted}>Passé</Badge>}
+            {current && <Badge color={C.accent}>Ce mois</Badge>}
+            {!done && !current && !banned && <span style={{ fontSize: 11, color: C.muted }}>Mois {i + 1}</span>}
+            {banned && <Badge color={C.red}>Banni</Badge>}
+            {!group.started && !m.is_creator && session?.user?.id === group.creator_id && (
+              <button onClick={async () => {
+                if (window.confirm(`Retirer ${m.name} du groupe ?`)) {
+                  await supabase.from('group_members').delete().eq('id', m.id);
+const updatedGroup = { ...group, members: members.filter(x => x.id !== m.id) };
+onUpdate(updatedGroup);
+                }
+              }} style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: 16 }}>×</button>
+            )}
+          </div>
+        );
+      })}
+    </Card>
+    {group.started && currentMonth === members.filter(m => m.active).length && (
+      <Card style={{ marginTop: 12, borderColor: C.green + "50", background: C.greenDim, textAlign: "center", padding: 24 }}>
+        <div style={{ fontSize: 28, marginBottom: 8 }}>🎉</div>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: C.green }}>Cycle terminé !</div>
+        <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Tout le monde a reçu sa part. Les prélèvements sont arrêtés.</div>
+      </Card>
+    )}
+  </div>
+)}
+
 
       {/* GOVERNANCE */}
       {tab === "governance" && (
@@ -1232,7 +1242,7 @@ if (profiles && profiles.length > 0) setProfile(profiles[0]);
   setView("home");
 };
 
-  const updateGroup = async (updated) => {
+  const updateGroup = async (updated) => { await loadGroups();
   const { group_members, payments, banVotes, banCandidates, unlockVotes, redistributeVotes, refundRequests, members, ...groupData } = updated;
   
   // Mettre à jour le groupe
@@ -1278,6 +1288,8 @@ console.log('payments keys:', Object.keys(payments));
   }
 
   setGroups(prev => prev.map(g => g.id === updated.id ? updated : g));
+await new Promise(resolve => setTimeout(resolve, 500));
+await loadGroups();
 };
 
    if (loading) return (
