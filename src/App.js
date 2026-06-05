@@ -355,11 +355,13 @@ function JoinGroup({ token, session, onDone }) {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
-  const [error, setError] = useState('');
+  const [error] = useState(''); // eslint-disable-line no-unused-vars
 
   useEffect(() => {
-    loadGroup();
-  }, [token]);
+  loadGroup();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [token]);
+
 
   const loadGroup = async () => {
     const { data } = await supabase
