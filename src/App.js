@@ -351,6 +351,97 @@ function CreateView({ onCreate, onBack }) {
   );
 }
 
+function JoinGroup({ token, session, onDone }) {
+  const [group, setGroup] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [joining, setJoining] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    loadGroup();
+  }, [token]);
+
+  const loadGroup = async () => {
+    const { data } = await supabase
+      .from('groups')
+      .select('*, group_members(*)')
+      .eq('invite_token', token)
+      .single();
+    setGroup(data);
+    setLoading(false);
+  };
+
+  const joinGroup = async () => {
+    setJoining(true);
+    const { data: members } = await supabase
+      .from('group_members')
+      .select('*')
+      .eq('group_id', group.id)
+      .is('user_id', null)
+      .limit(1);
+
+    if (members && members.length > 0) {
+      await supabase.from('group_members')
+        .update({ user_id: session.user.id })
+        .eq('id', members[0].id);
+    } else {
+      await supabase.from('group_members').insert({
+        group_id: group.id,
+        user_id: session.user.id,
+        name: session.user.email.split('@')[0],
+        is_creator: false,
+        active: true,
+        join_order: 99,
+      });
+    }
+    onDone();
+  };
+
+  if (loading) return (
+    <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.accent, fontSize: 24 }}>⏳</div>
+  );
+
+  if (!group) return (
+    <div style={{ background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ color: C.red, fontSize: 16 }}>❌ Lien invalide ou expiré</div>
+    </div>
+  );
+
+  return (
+    <div style={{ maxWidth: 480, margin: '0 auto', padding: '60px 16px', background: C.bg, minHeight: '100vh' }}>
+      <div style={{ textAlign: 'center', marginBottom: 32 }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🫂</div>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800, color: C.text }}>
+          Tu es invité !
+        </div>
+      </div>
+      <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 18, padding: 24, marginBottom: 20 }}>
+        <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: '.06em', marginBottom: 6 }}>GROUPE</div>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 22, color: C.text, marginBottom: 8 }}>{group.name}</div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ background: C.accentDim, color: C.accent, borderRadius: 20, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>
+            {group.type === 'tontine' ? '🔄 Tontine' : '🎯 Cagnotte'}
+          </span>
+          <span style={{ background: C.subtle, color: C.muted, borderRadius: 20, padding: '4px 10px', fontSize: 11 }}>
+            {group.group_members?.length} membres
+          </span>
+          {group.type === 'tontine' && (
+            <span style={{ background: C.subtle, color: C.muted, borderRadius: 20, padding: '4px 10px', fontSize: 11 }}>
+              💰 {group.amount}€/mois
+            </span>
+          )}
+        </div>
+      </div>
+      {error && <div style={{ color: C.red, fontSize: 12, marginBottom: 12, textAlign: 'center' }}>{error}</div>}
+      <button onClick={joinGroup} disabled={joining}
+        style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: C.accent, color: '#080b12', fontWeight: 800, fontSize: 16, cursor: joining ? 'not-allowed' : 'pointer', opacity: joining ? 0.6 : 1 }}>
+        {joining ? '⏳ Connexion...' : '🚀 Rejoindre le groupe'}
+      </button>
+    </div>
+  );
+}
+
+
 function InviteAccept({ invites, session, onDone }) {
   const acceptInvite = async (invite) => {
   await supabase
@@ -611,7 +702,7 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
         
 
           
-          <Card style={{ marginBottom: 12 }}>
+       <Card style={{ marginBottom: 12 }}>
   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>📧 Inviter un membre</div>
   <InviteForm groupId={group.id} members={active} />
 </Card>
@@ -1149,6 +1240,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [pendingInvites, setPendingInvites] = useState([]);
 const [showProfile, setShowProfile] = useState(false);
+const [joinToken, setJoinToken] = useState(null);
 const [profile, setProfile] = useState(null);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -1159,6 +1251,7 @@ const [profile, setProfile] = useState(null);
       setSession(session);
     });
     return () => subscription.unsubscribe();
+
   }, []);
 
   useEffect(() => {
@@ -1170,6 +1263,14 @@ useEffect(() => {
   if (session) checkInvitations();
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [session]);
+
+useEffect(() => {
+  const path = window.location.pathname;
+  if (path.startsWith('/join/')) {
+    const token = path.split('/join/')[1];
+    if (token) setJoinToken(token);
+  }
+}, []);
 
 const checkInvitations = async () => {
   const { data } = await supabase
@@ -1344,6 +1445,9 @@ await loadGroups();
       ⏳
     </div>
   );
+
+if (joinToken && !session) return <Auth onJoinToken={joinToken} />;
+if (joinToken && session) return <JoinGroup token={joinToken} session={session} onDone={() => { setJoinToken(null); loadGroups(); }} />;
 
   if (!session) return <Auth />;
 
