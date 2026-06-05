@@ -608,11 +608,7 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
 )}
             </div>
           </Card>
-          {/* BOUTON TEST ONLY */}
-<Btn onClick={() => onUpdate({ ...group, current_month: (group.current_month || 1) + 1 })} 
-  color={C.muted} ghost small style={{ marginTop: 8 }}>
-  ⏩ Mois suivant (test)
-</Btn>
+        
 
           
           <Card style={{ marginBottom: 12 }}>
