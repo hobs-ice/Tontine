@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import Auth from './Auth';
-import Profile from './Profile';
+
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
@@ -1366,7 +1366,7 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [pendingInvites, setPendingInvites] = useState([]);
-const [showProfile, setShowProfile] = useState(false);
+const [showProfile, setShowProfile] = useState(false); // eslint-disable-line no-unused-vars
 const [joinToken, setJoinToken] = useState(null);
 const [profile, setProfile] = useState(null);
 const [notifications, setNotifications] = useState([]);
@@ -1574,7 +1574,7 @@ if (payments) {
   // Sauvegarder les paiements
   if (payments) {
     for (const [monthStr, memberPayments] of Object.entries(payments)) {
-      console.log('monthStr:', monthStr, 'parseInt:', parseInt(monthStr));
+      
       console.log('payments object:', payments);
 console.log('payments keys:', Object.keys(payments));
       const month = parseInt(monthStr);
