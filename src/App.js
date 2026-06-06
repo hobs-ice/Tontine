@@ -1550,7 +1550,7 @@ if (!updated.started && payments) {
   }
 // Notifier les membres quand quelqu'un paie
 if (payments) {
-  for (const [mi, memberPayments] of Object.entries(payments)) {
+  for (const [, memberPayments] of Object.entries(payments)) {
     for (const [memberId, paid] of Object.entries(memberPayments)) {
       if (paid) {
         const member = (updated.members || []).find(m => 
