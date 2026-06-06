@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Auth from './Auth';
 
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 
@@ -498,6 +498,39 @@ function StripePayment({ amount, groupName, memberId, groupId, onSuccess, onCanc
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [paymentRequest, setPaymentRequest] = useState(null);
+
+  useEffect(() => {
+    if (!stripe) return;
+    const pr = stripe.paymentRequest({
+      country: 'FR',
+      currency: 'eur',
+      total: { label: groupName, amount: Math.round(amount * 100) },
+      requestPayerName: true,
+      requestPayerEmail: true,
+    });
+    pr.canMakePayment().then(result => {
+      if (result) setPaymentRequest(pr);
+    });
+    pr.on('paymentmethod', async (e) => {
+      const res = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/create-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, groupName, memberId, groupId })
+      });
+      const { clientSecret } = await res.json();
+      const { error: confirmError } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: e.paymentMethod.id
+      }, { handleActions: false });
+      if (confirmError) {
+        e.complete('fail');
+        setError(confirmError.message);
+      } else {
+        e.complete('success');
+        onSuccess();
+      }
+    });
+  }, [stripe]);
 
   const handlePay = async () => {
     setLoading(true);
@@ -508,11 +541,9 @@ function StripePayment({ amount, groupName, memberId, groupId, onSuccess, onCanc
     });
     const { clientSecret, error: fetchError } = await res.json();
     if (fetchError) { setError(fetchError); setLoading(false); return; }
-
     const { error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
       payment_method: { card: elements.getElement(CardElement) }
     });
-
     if (stripeError) {
       setError(stripeError.message);
     } else {
@@ -527,6 +558,14 @@ function StripePayment({ amount, groupName, memberId, groupId, onSuccess, onCanc
         <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 16 }}>
           💳 Payer {amount}€
         </div>
+
+        {paymentRequest && (
+          <div style={{ marginBottom: 16 }}>
+            <PaymentRequestButtonElement options={{ paymentRequest }} />
+            <div style={{ textAlign: 'center', color: C.muted, fontSize: 12, margin: '12px 0' }}>— ou —</div>
+          </div>
+        )}
+
         <div style={{ background: C.subtle, borderRadius: 8, padding: '12px 16px', marginBottom: 16 }}>
           <CardElement options={{ style: { base: { color: '#f1f5f9', fontSize: '16px' } } }} />
         </div>
@@ -544,6 +583,7 @@ function StripePayment({ amount, groupName, memberId, groupId, onSuccess, onCanc
     </div>
   );
 }
+
 
 function InviteAccept({ invites, session, onDone }) {
   const acceptInvite = async (invite) => {
