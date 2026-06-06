@@ -530,6 +530,7 @@ function StripePayment({ amount, groupName, memberId, groupId, onSuccess, onCanc
         onSuccess();
       }
     });
+   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stripe]);
 
   const handlePay = async () => {
