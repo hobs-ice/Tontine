@@ -1550,7 +1550,7 @@ if (!updated.started && payments) {
   }
 // Notifier les membres quand quelqu'un paie
 if (payments) {
-  for (const [monthIndex, memberPayments] of Object.entries(payments)) {
+  for (const [mi, memberPayments] of Object.entries(payments)) {
     for (const [memberId, paid] of Object.entries(memberPayments)) {
       if (paid) {
         const member = (updated.members || []).find(m => 
@@ -1574,7 +1574,7 @@ if (payments) {
   // Sauvegarder les paiements
   if (payments) {
     for (const [monthIndex, memberPayments] of Object.entries(payments)) {
-      const month = parseInt(monthIndex);
+       const month = parseInt(mi);
 
       for (const [memberId, paid] of Object.entries(memberPayments)) {
         // Trouver le vrai ID du membre dans group_members
