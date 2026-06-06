@@ -1573,8 +1573,8 @@ if (payments) {
 
   // Sauvegarder les paiements
   if (payments) {
-    for (const [mi, memberPayments] of Object.entries(payments)) {
-      const month = parseInt(mi);
+    for (const [monthKey, memberPayments] of Object.entries(payments)) {
+      const month = parseInt(monthKey);
 
       for (const [memberId, paid] of Object.entries(memberPayments)) {
         // Trouver le vrai ID du membre dans group_members
