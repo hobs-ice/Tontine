@@ -1577,7 +1577,7 @@ if (payments) {
       
       console.log('payments object:', payments);
 console.log('payments keys:', Object.keys(payments));
-      const month = parseInt(monthStr);
+      const month = parseInt(monthStr); // eslint-disable-line no-unused-vars
       for (const [memberId, paid] of Object.entries(memberPayments)) {
         // Trouver le vrai ID du membre dans group_members
         const member = (updated.members || updated.group_members || []).find(m => 
