@@ -100,7 +100,7 @@ function FeeNote({ amount }) {
 
 
 // ── HOME ──────────────────────────────────────────────────────
-function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile }) {
+function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadCount, onNotifications }) {
   console.log('Profile in HomeView:', profile);
   const tontines = groups.filter(g => g.type === "tontine");
   
@@ -162,6 +162,15 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile }) {
   ) : (
     <span style={{ fontSize: 20 }}>👤</span>
   )}
+
+  <button onClick={onNotifications} style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}>
+  🔔
+  {unreadCount > 0 && (
+    <span style={{ position: 'absolute', top: -4, right: -4, background: C.red, color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+      {unreadCount}
+    </span>
+  )}
+</button>
 </button> <span style={{ color: C.muted, fontSize: 12 }}>|</span>   
              <button onClick={onLogout} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12 }}>
    Déconnexion
@@ -439,6 +448,42 @@ function JoinGroup({ token, session, onDone }) {
         style={{ width: '100%', padding: '14px', borderRadius: 12, border: 'none', background: C.accent, color: '#080b12', fontWeight: 800, fontSize: 16, cursor: joining ? 'not-allowed' : 'pointer', opacity: joining ? 0.6 : 1 }}>
         {joining ? '⏳ Connexion...' : '🚀 Rejoindre le groupe'}
       </button>
+    </div>
+  );
+}
+
+function NotificationsView({ notifications, session, onBack, onMarkRead }) {
+  return (
+    <div style={{ maxWidth: 480, margin: '0 auto', padding: '32px 16px', background: C.bg, minHeight: '100vh' }}>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', marginBottom: 20, fontSize: 13 }}>
+        ← Retour
+      </button>
+      <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800, color: C.text, marginBottom: 24 }}>
+        🔔 Notifications
+      </div>
+      {notifications.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 48, color: C.muted }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔕</div>
+          <div>Aucune notification</div>
+        </div>
+      ) : (
+        notifications.map((n, i) => (
+          <div key={i} onClick={() => onMarkRead(n.id)}
+            style={{ background: n.read ? C.card : C.accentDim, border: `1px solid ${n.read ? C.cardBorder : C.accent + '40'}`, borderRadius: 14, padding: 16, marginBottom: 10, cursor: 'pointer' }}>
+            <div style={{ fontSize: 13, color: C.text, marginBottom: 4 }}>{n.message}</div>
+            <div style={{ fontSize: 11, color: C.muted }}>
+              {new Date(n.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            </div>
+            {!n.read && <div style={{ fontSize: 10, color: C.accent, fontWeight: 700, marginTop: 4 }}>● Non lu</div>}
+          </div>
+        ))
+      )}
+      {notifications.some(n => !n.read) && (
+        <button onClick={() => notifications.filter(n => !n.read).forEach(n => onMarkRead(n.id))}
+          style={{ width: '100%', padding: '12px', borderRadius: 10, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.muted, cursor: 'pointer', fontSize: 13, marginTop: 8 }}>
+          ✓ Tout marquer comme lu
+        </button>
+      )}
     </div>
   );
 }
@@ -1244,6 +1289,9 @@ export default function App() {
 const [showProfile, setShowProfile] = useState(false);
 const [joinToken, setJoinToken] = useState(null);
 const [profile, setProfile] = useState(null);
+const [notifications, setNotifications] = useState([]);
+const [unreadCount, setUnreadCount] = useState(0);
+const [showNotifications, setShowNotifications] = useState(false);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -1349,6 +1397,16 @@ console.log('Member groups loaded:', memberGroups);
   .select('*')
   .eq('id', session.user.id);
 if (profiles && profiles.length > 0) setProfile(profiles[0]);
+const { data: notifs } = await supabase
+  .from('notifications')
+  .select('*')
+  .eq('user_id', session.user.id)
+  .order('created_at', { ascending: false })
+  .limit(20);
+if (notifs) {
+  setNotifications(notifs);
+  setUnreadCount(notifs.filter(n => !n.read).length);
+}
 
   }
 };
@@ -1409,6 +1467,27 @@ if (!updated.started && payments) {
   if (hasPayment) {
     await supabase.from('groups').update({ started: true }).eq('id', updated.id);
   }
+// Notifier les membres quand quelqu'un paie
+if (payments) {
+  for (const [monthStr, memberPayments] of Object.entries(payments)) {
+    for (const [memberId, paid] of Object.entries(memberPayments)) {
+      if (paid) {
+        const member = (updated.members || []).find(m => 
+          String(m.id) === String(memberId)
+        );
+        if (member) {
+          await supabase.from('notifications').insert({
+            user_id: session.user.id,
+            group_id: updated.id,
+            type: 'payment',
+            message: `✅ ${member.name} a confirmé son paiement pour ${updated.name}`,
+          });
+        }
+      }
+    }
+  }
+}
+
 }
 
   // Sauvegarder les paiements
@@ -1453,7 +1532,16 @@ if (joinToken && session) return <JoinGroup token={joinToken} session={session} 
 
   if (!session) return <Auth />;
 
-  if (showProfile && session) return <Profile session={session} onBack={() => { setShowProfile(false); loadGroups(); }} />;
+  if (showNotifications) return <NotificationsView 
+  notifications={notifications}
+  session={session}
+  onBack={() => setShowNotifications(false)}
+  onMarkRead={async (id) => {
+    await supabase.from('notifications').update({ read: true }).eq('id', id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+  }}
+/>;
   
   if (pendingInvites.length > 0) return <InviteAccept 
     invites={pendingInvites} 
@@ -1468,7 +1556,7 @@ if (joinToken && session) return <JoinGroup token={joinToken} session={session} 
     const props = { group: g, onBack: () => setView("home"), onUpdate: updateGroup, session };
     return g.type === "tontine" ? <TontineDetail {...props} /> : <CagnotteDetail {...props} />;
   }
-  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} onProfile={() => setShowProfile(true)} profile={profile} />;
+  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} onProfile={() => setShowProfile(true)} profile={profile} onNotifications={() => setShowNotifications(true)} unreadCount={unreadCount}/>;
 }
 
 
