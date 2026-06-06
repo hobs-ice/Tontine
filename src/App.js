@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import Auth from './Auth';
 import Profile from './Profile';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 
 // ── DESIGN TOKENS ─────────────────────────────────────────────
 const C = {
@@ -489,6 +493,58 @@ function NotificationsView({ notifications, session, onBack, onMarkRead }) {
 }
 
 
+function StripePayment({ amount, groupName, memberId, groupId, onSuccess, onCancel }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handlePay = async () => {
+    setLoading(true);
+    const res = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/create-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, groupName, memberId, groupId })
+    });
+    const { clientSecret, error: fetchError } = await res.json();
+    if (fetchError) { setError(fetchError); setLoading(false); return; }
+
+    const { error: stripeError } = await stripe.confirmCardPayment(clientSecret, {
+      payment_method: { card: elements.getElement(CardElement) }
+    });
+
+    if (stripeError) {
+      setError(stripeError.message);
+    } else {
+      onSuccess();
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+      <div style={{ background: C.card, borderRadius: 18, padding: 24, width: '90%', maxWidth: 400 }}>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 18, marginBottom: 16 }}>
+          💳 Payer {amount}€
+        </div>
+        <div style={{ background: C.subtle, borderRadius: 8, padding: '12px 16px', marginBottom: 16 }}>
+          <CardElement options={{ style: { base: { color: '#f1f5f9', fontSize: '16px' } } }} />
+        </div>
+        {error && <div style={{ color: C.red, fontSize: 12, marginBottom: 12 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '12px', borderRadius: 10, border: `1px solid ${C.cardBorder}`, background: 'transparent', color: C.muted, cursor: 'pointer' }}>
+            Annuler
+          </button>
+          <button onClick={handlePay} disabled={loading}
+            style={{ flex: 1, padding: '12px', borderRadius: 10, border: 'none', background: C.purple, color: 'white', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
+            {loading ? '⏳...' : '⚡ Payer'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function InviteAccept({ invites, session, onDone }) {
   const acceptInvite = async (invite) => {
   await supabase
@@ -623,6 +679,7 @@ function InviteForm({ groupId, members }) {
 // ── TONTINE DETAIL ────────────────────────────────────────────
 function TontineDetail({ group, onBack, onUpdate, session }) {
   const [tab, setTab] = useState("dashboard");
+  const [showStripePayment, setShowStripePayment] = useState(null);
   const { name, amount, members, currentMonth, payments, banVotes, payMethod } = group;
   const active = members.filter(m => m.active);
   const pot = amount * active.length;
@@ -901,16 +958,37 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
                     </div>
                   </div>
                   {isRecipient ? <Badge color={C.accent}>Reçoit {fmt(netPot)}€</Badge> : (
-                    <button onClick={() => togglePaid(m.id)} style={{ background: paid ? C.greenDim : C.subtle, border: `1px solid ${paid ? C.green : C.cardBorder}`, color: paid ? C.green : C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
-                      {paid ? "✓ Payé" : payMethod === "stripe" ? "⚡ Auto" : "Confirmer"}
-                    </button>
-                  )}
+  payMethod === 'stripe' && !paid ? (
+    showStripePayment === m.id ? (
+      <Elements stripe={stripePromise}>
+        <StripePayment
+          amount={group.amount}
+          groupName={group.name}
+          memberId={m.id}
+          groupId={group.id}
+          onSuccess={() => { togglePaid(m.id); setShowStripePayment(null); }}
+          onCancel={() => setShowStripePayment(null)}
+        />
+      </Elements>
+    ) : (
+      <button onClick={() => setShowStripePayment(m.id)}
+        style={{ background: C.purple, border: 'none', borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 700, color: 'white' }}>
+        ⚡ Payer
+      </button>
+    )
+  ) : (
+    <button onClick={() => togglePaid(m.id)} style={{ background: paid ? C.greenDim : C.subtle, border: `1px solid ${paid ? C.green : C.cardBorder}`, color: paid ? C.green : C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
+      {paid ? "✓ Payé" : "Confirmer"}
+    </button>
+  )
+)}
                 </div>
               );
             })}
           </Card>
         </div>
       )}
+
 
       {/* ORDER */}
 {tab === "order" && (
@@ -1042,6 +1120,7 @@ onUpdate(updatedGroup);
 // ── CAGNOTTE DETAIL ───────────────────────────────────────────
 function CagnotteDetail({ group, onBack, onUpdate }) {
   const [tab, setTab] = useState("dashboard");
+  
   const { name, goal, months, members, currentMonth, payments, unlockVotes, payMethod, refundRequests } = group;
   const active = members.filter(m => m.active);
   const monthly = Math.ceil(goal / members.length / months * 100) / 100;
@@ -1175,15 +1254,16 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
                     <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name}{m.isCreator ? " 👑" : ""}</div>
                     <div style={{ fontSize: 11, color: isLate ? C.red : C.muted }}>{isLate ? "⚠ En retard" : `${fmt(monthly)}€ à verser`}</div>
                   </div>
-                  <button onClick={() => togglePaid(m.id)} style={{ background: paid ? C.greenDim : C.subtle, border: `1px solid ${paid ? C.green : C.cardBorder}`, color: paid ? C.green : C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
-                    {paid ? "✓ Payé" : payMethod === "stripe" ? "⚡ Auto" : "Confirmer"}
-                  </button>
+                 <button onClick={() => togglePaid(m.id)} style={{ background: paid ? C.greenDim : C.subtle, border: `1px solid ${paid ? C.green : C.cardBorder}`, color: paid ? C.green : C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
+  {paid ? "✓ Payé" : payMethod === "stripe" ? "⚡ Auto" : "Confirmer"}
+</button>
                 </div>
               );
             })}
           </Card>
         </div>
       )}
+
 
 {tab === "history" && (
   <div className="fade-in">
@@ -1382,6 +1462,7 @@ console.log('Member groups loaded:', memberGroups);
       return {
         ...g,
         currentMonth: g.current_month,
+        payMethod: g.pay_method,
         members: g.group_members || [],
         payments: paymentsObj,
         banVotes: g.ban_votes || {},
