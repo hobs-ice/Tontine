@@ -1573,7 +1573,7 @@ if (payments) {
 
   // Sauvegarder les paiements
   if (payments) {
-    for (const [monthStr, memberPayments] of Object.entries(payments)) {
+    for (const [, memberPayments] of Object.entries(payments)) {
       
       console.log('payments object:', payments);
 console.log('payments keys:', Object.keys(payments));
