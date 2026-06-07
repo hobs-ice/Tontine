@@ -1635,6 +1635,49 @@ if (accountId) {
 const allPaid = Object.values(updated.payments[updated.currentMonth - 1] || {})
   .filter(Boolean).length === (updated.members || []).filter(m => m.active).length;
 
+// Virement automatique au bénéficiaire si tous ont payé
+if (allPaid && updated.type === 'tontine') {
+  const activeMembers = (updated.members || []).filter(m => m.active);
+  const recipientMember = activeMembers[updated.currentMonth - 1] || activeMembers[0];
+  
+  if (recipientMember?.user_id) {
+    const { data: recipientProfile } = await supabase
+      .from('profiles')
+      .select('iban, name')
+      .eq('id', recipientMember.user_id)
+      .single();
+
+    if (recipientProfile?.iban) {
+      const guaranteePercent = updated.guarantee_percent || 10;
+      const pot = updated.amount * activeMembers.length;
+      const netAmount = Math.round(pot * (1 - guaranteePercent / 100) * 0.96 * 100) / 100;
+
+      await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/stripe-connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_to_beneficiary',
+          groupId: updated.id,
+          amount: netAmount,
+          recipientIban: recipientProfile.iban,
+          recipientName: recipientProfile.name || recipientMember.name,
+          recipientEmail: '',
+        })
+      });
+
+      // Notification au bénéficiaire
+      await supabase.from('notifications').insert({
+        user_id: recipientMember.user_id,
+        group_id: updated.id,
+        type: 'payout',
+        message: `🎉 ${netAmount}€ virés sur votre compte pour ${updated.name} !`,
+      });
+    }
+  }
+}
+
+  
+
 if (allPaid) {
   const pot = updated.amount * (updated.members || []).filter(m => m.active).length;
   const guaranteeAmount = Math.round(pot * ((updated.guarantee_percent || 10) / 100) * 100) / 100;
