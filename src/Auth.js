@@ -7,7 +7,7 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-
+  const [iban, setIban] = useState('');
   const C = {
     bg: "#080b12", card: "#0e1420", cardBorder: "#1c2535",
     accent: "#f0b429", text: "#f1f5f9", muted: "#64748b",
@@ -23,7 +23,18 @@ export default function Auth() {
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) setMessage(error.message);
-        else setMessage('Vérifie ton email pour confirmer ton compte !');
+        else {
+  setMessage('Vérifie ton email pour confirmer ton compte !');
+  if (iban) {
+    const { data: userData } = await supabase.auth.getUser();
+    if (userData?.user) {
+      await supabase.from('profiles').upsert({
+        id: userData.user.id,
+        iban: iban.trim(),
+      });
+    }
+  }
+}
       }
     } catch (err) {
       setMessage(err.message);
@@ -65,6 +76,20 @@ export default function Auth() {
           onChange={e => setPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAuth()}
           style={{ width: '100%', background: '#0a0f1a', border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '12px 16px', color: C.text, fontSize: 15, outline: 'none', marginBottom: 16 }} />
+          {!isLogin && (
+  <div>
+    <input
+      type="text"
+      placeholder="IBAN (optionnel — pour recevoir vos virements)"
+      value={iban}
+      onChange={e => setIban(e.target.value.toUpperCase())}
+      style={{ width: '100%', background: '#0a0f1a', border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '12px 16px', color: C.text, fontSize: 13, outline: 'none', marginBottom: 10, letterSpacing: '.05em' }} />
+    <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
+      💡 Renseignez votre IBAN pour recevoir automatiquement votre part quand ce sera votre tour.
+    </div>
+  </div>
+)}
+
 
         {message && (
           <div style={{ background: '#1a0f00', border: '1px solid #f0b42940', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: '#f0b429', marginBottom: 12 }}>

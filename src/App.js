@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import Auth from './Auth';
+import Profile from './Profile';
 
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
@@ -160,25 +161,27 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
       <div style={{ marginBottom: 32 }}>
         <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 30, fontWeight: 800, letterSpacing: "-.03em" }}>🫂 Tontine</div>
         <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>L'épargne collective entre amis</div>
-       <button onClick={onProfile} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-  {profile?.avatar_url ? (
-    <img src={profile.avatar_url} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
-  ) : (
-    <span style={{ fontSize: 20 }}>👤</span>
-  )}
-
+       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+  <button onClick={onProfile} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+    {profile?.avatar_url ? (
+      <img src={profile.avatar_url} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
+    ) : (
+      <span style={{ fontSize: 20 }}>👤</span>
+    )}
+  </button>
   <button onClick={onNotifications} style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}>
-  🔔
-  {unreadCount > 0 && (
-    <span style={{ position: 'absolute', top: -4, right: -4, background: C.red, color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-      {unreadCount}
-    </span>
-  )}
-</button>
-</button> <span style={{ color: C.muted, fontSize: 12 }}>|</span>   
-             <button onClick={onLogout} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12 }}>
-   Déconnexion
-</button>
+    🔔
+    {unreadCount > 0 && (
+      <span style={{ position: 'absolute', top: -4, right: -4, background: C.red, color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+        {unreadCount}
+      </span>
+    )}
+  </button>
+  <span style={{ color: C.muted, fontSize: 12 }}>|</span>
+  <button onClick={onLogout} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12 }}>
+    Déconnexion
+  </button>
+</div>
       </div>
 
       {groups.length === 0 ? (
@@ -1711,6 +1714,16 @@ if (joinToken && !session) return <Auth onJoinToken={joinToken} />;
 if (joinToken && session) return <JoinGroup token={joinToken} session={session} onDone={() => { setJoinToken(null); loadGroups(); }} />;
 
   if (!session) return <Auth />;
+  if (session && !profile?.name) return (
+  <div style={{ maxWidth: 480, margin: '0 auto', padding: '60px 16px', background: C.bg, minHeight: '100vh' }}>
+    <div style={{ textAlign: 'center', marginBottom: 40 }}>
+      <div style={{ fontSize: 48, marginBottom: 12 }}>🫂</div>
+      <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 28, fontWeight: 800, color: C.text }}>Bienvenue !</div>
+      <div style={{ color: C.muted, fontSize: 14, marginTop: 8 }}>Complétez votre profil pour commencer</div>
+    </div>
+    <Profile session={session} onBack={() => loadGroups()} isOnboarding={true} />
+  </div>
+);
 
   if (showNotifications) return <NotificationsView 
   notifications={notifications}
