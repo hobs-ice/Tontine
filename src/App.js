@@ -1595,6 +1595,20 @@ guarantee_balance: 0,
       user_id: m.isCreator ? session.user.id : null,
     }));
     await supabase.from('group_members').insert(membersToInsert);
+    // Créer un compte Stripe Connect pour le groupe
+const stripeRes = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/stripe-connect', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'create_group_account',
+    groupId: newGroup.id,
+    groupName: newGroup.name,
+  })
+});
+const { accountId } = await stripeRes.json();
+if (accountId) {
+  await supabase.from('groups').update({ stripe_account_id: accountId }).eq('id', newGroup.id);
+}
     await loadGroups();
   } else {
     console.error('Erreur création groupe:', error);
@@ -1611,6 +1625,8 @@ guarantee_balance: 0,
     started: groupData.started,
     ban_votes: updated.banVotes || {},
   }).eq('id', updated.id);
+
+  
 
   // Mettre à jour la garantie quand tous ont payé
 const allPaid = Object.values(updated.payments[updated.currentMonth - 1] || {})
