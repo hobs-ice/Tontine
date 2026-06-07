@@ -219,9 +219,10 @@ function CreateView({ onCreate, onBack }) {
   const [months, setMonths] = useState("");
   const [payMethod, setPayMethod] = useState("stripe");
   const [iban, setIban] = useState('');
+  const [guaranteePercent, setGuaranteePercent] = useState(10);
   const [memberInput, setMemberInput] = useState("");
   const [members, setMembers] = useState([{ id: 0, name: "Moi", isCreator: true, active: true, joined: 1 }]);
-
+  
 
   const color = type === "tontine" ? C.accent : C.teal;
   const monthly = type === "cagnotte" && Number(goal) > 0 && members.length > 0 && Number(months) > 0
@@ -244,10 +245,16 @@ function CreateView({ onCreate, onBack }) {
   const canCreate = canNext1 && members.length >= 2;
 
   const handle = () => {
-  const base = { type, name, payMethod, iban, started: false, currentMonth: 1, payments: {}, banVotes: {}, banCandidates: [] };
+  const base = { type, name, payMethod, iban,  started: false, currentMonth: 1, payments: {}, banVotes: {}, banCandidates: [] };
+  
   if (type === "tontine") onCreate({ ...base, amount: Number(amount), members });
   else onCreate({ ...base, goal: Number(goal), months: Number(months), members, unlockVotes: {}, redistributeVotes: {}, refundRequests: [] });
+  
 };
+
+
+
+
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "32px 16px" }}>
@@ -314,6 +321,21 @@ function CreateView({ onCreate, onBack }) {
       style={{ width: "100%", background: C.subtle, border: "none", borderRadius: 8, padding: "10px 12px", color: C.text, outline: "none", fontSize: 13, letterSpacing: ".05em" }} />
   </Card>
 )}
+
+<Card style={{ marginBottom: 10 }}>
+  <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 8 }}>GARANTIE (%)</div>
+  <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+    {[5, 10, 15, 20].map(p => (
+      <div key={p} onClick={() => setGuaranteePercent(p)}
+        style={{ flex: 1, padding: '10px 6px', borderRadius: 10, cursor: 'pointer', textAlign: 'center', border: `2px solid ${guaranteePercent === p ? C.accent : C.cardBorder}`, background: guaranteePercent === p ? C.accentDim : 'transparent' }}>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: guaranteePercent === p ? C.accent : C.text }}>{p}%</div>
+      </div>
+    ))}
+  </div>
+  <div style={{ fontSize: 11, color: C.muted }}>
+    Sur chaque versement {guaranteePercent}% est conservé dans le compte du groupe comme garantie.
+  </div>
+</Card>
 
       {/* membres */}
       <Card style={{ marginBottom: 10 }}>
@@ -432,6 +454,7 @@ function JoinGroup({ token, session, onDone }) {
       </div>
       <div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 18, padding: 24, marginBottom: 20 }}>
         <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: '.06em', marginBottom: 6 }}>GROUPE</div>
+        
         <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 22, color: C.text, marginBottom: 8 }}>{group.name}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ background: C.accentDim, color: C.accent, borderRadius: 20, padding: '4px 10px', fontSize: 11, fontWeight: 700 }}>
@@ -724,7 +747,9 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
   const { name, amount, members, currentMonth, payments, banVotes, payMethod } = group;
   const active = members.filter(m => m.active);
   const pot = amount * active.length;
-  const netPot = Math.round(pot * 0.96 * 100) / 100;
+  const guaranteePercent = group.guarantee_percent || 10;
+const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
+const netPot = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
   const recipient = active[currentMonth - 1] || active[0];
   const monthPaid = (mi, pi) => payments?.[mi]?.[pi] ?? false;
   const allPaid = active.every(m => monthPaid(currentMonth - 1, m.id));
@@ -828,6 +853,10 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
             <div style={{ fontSize: 10, color: C.muted, letterSpacing: ".1em", textTransform: "uppercase" }}>Cagnotte du mois</div>
             <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 52, fontWeight: 800, color: C.accent, lineHeight: 1 }}>{fmt(pot)}€</div>
             <FeeNote amount={pot} />
+            <div style={{ background: C.subtle, borderRadius: 10, padding: "10px 14px", fontSize: 11, color: C.muted, marginTop: 8 }}>
+  🛡️ Garantie retenue ({guaranteePercent}%) : <span style={{ color: C.orange }}>{fmt(guaranteeAmount)}€</span><br/>
+  💰 Solde garantie groupe : <span style={{ color: C.green }}>{fmt(group.guarantee_balance || 0)}€</span>
+</div>
             <div style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
               <Avatar name={recipient?.name || "?"} size={30} />
               <span style={{ fontSize: 14 }}>Pour <strong>{recipient?.name}</strong> le 5 du mois</span>
@@ -1548,6 +1577,8 @@ if (notifs) {
       current_month: 1,
       pay_method: groupData.payMethod,
       iban: groupData.iban || null,
+      guarantee_percent: groupData.guaranteePercent || 10,
+guarantee_balance: 0,
       started: false,
       creator_id: session.user.id 
     }])
@@ -1580,6 +1611,19 @@ if (notifs) {
     started: groupData.started,
     ban_votes: updated.banVotes || {},
   }).eq('id', updated.id);
+
+  // Mettre à jour la garantie quand tous ont payé
+const allPaid = Object.values(updated.payments[updated.currentMonth - 1] || {})
+  .filter(Boolean).length === (updated.members || []).filter(m => m.active).length;
+
+if (allPaid) {
+  const pot = updated.amount * (updated.members || []).filter(m => m.active).length;
+  const guaranteeAmount = Math.round(pot * ((updated.guarantee_percent || 10) / 100) * 100) / 100;
+  await supabase.from('groups').update({ 
+    guarantee_balance: (updated.guarantee_balance || 0) + guaranteeAmount 
+  }).eq('id', updated.id);
+}
+
 
   // Vérifier si le groupe doit être marqué comme démarré
 if (!updated.started && payments) {
