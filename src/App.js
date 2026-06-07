@@ -1757,6 +1757,7 @@ if (joinToken && !session) return <Auth onJoinToken={joinToken} />;
 if (joinToken && session) return <JoinGroup token={joinToken} session={session} onDone={() => { setJoinToken(null); loadGroups(); }} />;
 
   if (!session) return <Auth />;
+  if (showProfile && session) return <Profile session={session} onBack={() => { setShowProfile(false); loadGroups(); }} />;
   if (session && !profile?.name) return (
   <div style={{ maxWidth: 480, margin: '0 auto', padding: '60px 16px', background: C.bg, minHeight: '100vh' }}>
     <div style={{ textAlign: 'center', marginBottom: 40 }}>
