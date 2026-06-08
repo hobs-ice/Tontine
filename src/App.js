@@ -756,7 +756,8 @@ const netPot = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
   const recipient = active[currentMonth - 1] || active[0];
   const monthPaid = (mi, pi) => payments?.[mi]?.[pi] ?? false;
   const allPaid = active.every(m => monthPaid(currentMonth - 1, m.id));
-  const myId = 0; // simulate current user = Amilcar
+  const myId = session?.user?.id;
+const myMember = members.find(m => m.user_id === myId);
 
   const togglePaid = (memberId) => {
     const p = { ...group.payments };
@@ -879,10 +880,12 @@ const netPot = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
         
 
           
-       <Card style={{ marginBottom: 12 }}>
-  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>📧 Inviter un membre</div>
-  <InviteForm groupId={group.id} members={active} />
-</Card>
+       {group.creator_id === session?.user?.id && (
+  <Card style={{ marginBottom: 12 }}>
+    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>📧 Inviter un membre</div>
+    <InviteForm groupId={group.id} members={active} />
+  </Card>
+)}
 
 <Card style={{ marginBottom: 12 }}>
   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>🔗 Lien d'invitation</div>
@@ -1031,7 +1034,7 @@ const netPot = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
                     </div>
                   </div>
                   {isRecipient ? <Badge color={C.accent}>Reçoit {fmt(netPot)}€</Badge> : (
-  payMethod === 'stripe' && !paid ? (
+  payMethod === 'stripe' && !paid && m.user_id === myId ? (
     showStripePayment === m.id ? (
       <Elements stripe={stripePromise}>
         <StripePayment
