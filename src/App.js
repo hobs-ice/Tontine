@@ -224,7 +224,8 @@ function CreateView({ onCreate, onBack }) {
   const [iban, setIban] = useState('');
   const [guaranteePercent, setGuaranteePercent] = useState(10);
   const [memberInput, setMemberInput] = useState("");
-  const [members, setMembers] = useState([{ id: 0, name: "Moi", isCreator: true, active: true, joined: 1 }]);
+  const [members, setMembers] = useState([{ id: 0, name: "Créateur", isCreator: true, active: true, joined: 1 }]);
+  const [maxMembers, setMaxMembers] = useState('');
   
 
   const color = type === "tontine" ? C.accent : C.teal;
@@ -245,10 +246,10 @@ function CreateView({ onCreate, onBack }) {
   });
 
   const canNext1 = name.trim() && (type === "tontine" ? Number(amount) > 0 : Number(goal) > 0 && Number(months) > 0);
-  const canCreate = canNext1 && members.length >= 2;
+  const canCreate = canNext1 && Number(maxMembers) >= 2;
 
   const handle = () => {
-  const base = { type, name, payMethod, iban,  started: false, currentMonth: 1, payments: {}, banVotes: {}, banCandidates: [] };
+  const base = { type, name, payMethod, iban, guaranteePercent, maxMembers: Number(maxMembers), started: false, currentMonth: 1, payments: {}, banVotes: {}, banCandidates: [] };
   
   if (type === "tontine") onCreate({ ...base, amount: Number(amount), members });
   else onCreate({ ...base, goal: Number(goal), months: Number(months), members, unlockVotes: {}, redistributeVotes: {}, refundRequests: [] });
@@ -281,6 +282,13 @@ function CreateView({ onCreate, onBack }) {
         <input value={name} onChange={e => setName(e.target.value)} placeholder={type === "tontine" ? "Tontine des potes" : "Voyage Seychelles 🇸🇨"}
           style={{ width: "100%", background: "transparent", border: "none", outline: "none", color: C.text, fontSize: 18, fontFamily: "'Syne',sans-serif", fontWeight: 700 }} />
       </Card>
+
+      <Card style={{ marginBottom: 10 }}>
+  <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 8 }}>NOMBRE DE MEMBRES MAX</div>
+  <input type="number" value={maxMembers} onChange={e => setMaxMembers(e.target.value)} placeholder="Ex: 10"
+    style={{ width: "100%", background: "transparent", border: "none", outline: "none", color: C.accent, fontSize: 32, fontFamily: "'Syne',sans-serif", fontWeight: 800 }} />
+  <div style={{ fontSize: 11, color: C.muted, marginTop: 4 }}>La tontine durera {maxMembers || '?'} mois</div>
+</Card>
 
       {/* montants */}
       {type === "tontine" ? (
@@ -342,24 +350,15 @@ function CreateView({ onCreate, onBack }) {
 
       {/* membres */}
       <Card style={{ marginBottom: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-          <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em" }}>MEMBRES ({members.length})</div>
-          {type === "tontine" && <button onClick={shuffle} style={{ background: "none", border: "none", color: C.purple, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>🔀 Ordre aléatoire</button>}
-        </div>
-        {members.map((m, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-            {type === "tontine" && <div style={{ width: 20, height: 20, borderRadius: "50%", background: C.subtle, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: C.muted, flexShrink: 0 }}>{i + 1}</div>}
-            <Avatar name={m.name} size={30} />
-            <div style={{ flex: 1, fontSize: 13 }}>{m.name}</div>
-            {m.isCreator ? <Badge color={color}>Créateur</Badge> : <button onClick={() => removeMember(i)} style={{ background: "none", border: "none", color: C.red, cursor: "pointer", fontSize: 18 }}>×</button>}
-          </div>
-        ))}
-        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-          <input value={memberInput} onChange={e => setMemberInput(e.target.value)} onKeyDown={e => e.key === "Enter" && addMember()} placeholder="Prénom..."
-            style={{ flex: 1, background: C.subtle, border: "none", borderRadius: 8, padding: "8px 12px", color: C.text, outline: "none", fontSize: 13 }} />
-          <Btn onClick={addMember} ghost color={C.muted} small>+ Ajouter</Btn>
-        </div>
-      </Card>
+  <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 8 }}>MEMBRES</div>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <Avatar name={members[0].name} size={30} />
+    <div style={{ fontSize: 13 }}>{members[0].name} <Badge color={C.accent}>Créateur</Badge></div>
+  </div>
+  <div style={{ fontSize: 11, color: C.muted, marginTop: 10 }}>
+    💡 Invitez les membres après la création du groupe
+  </div>
+</Card>
 
       {/* récap frais */}
       {canCreate && (
@@ -757,6 +756,9 @@ const netPot = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
   const monthPaid = (mi, pi) => payments?.[mi]?.[pi] ?? false;
   const allPaid = active.every(m => monthPaid(currentMonth - 1, m.id));
   const myId = session?.user?.id;
+  console.log('myId:', myId, 'creator_id:', group.creator_id);
+  console.log('members:', members.map(m => ({ name: m.name , user_id: m.user_id })));
+
 
 
   const togglePaid = (memberId) => {
@@ -1033,31 +1035,35 @@ const netPot = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
                       {isRecipient ? "🎉 Bénéficiaire" : isLate ? "⚠ En retard" : `${fmt(amount)}€ à verser`}
                     </div>
                   </div>
-                  {isRecipient ? <Badge color={C.accent}>Reçoit {fmt(netPot)}€</Badge> : (
-  payMethod === 'stripe' && !paid && m.user_id === myId ? (
-    showStripePayment === m.id ? (
-      <Elements stripe={stripePromise}>
-        <StripePayment
-          amount={group.amount}
-          groupName={group.name}
-          memberId={m.id}
-          groupId={group.id}
-          onSuccess={() => { togglePaid(m.id); setShowStripePayment(null); }}
-          onCancel={() => setShowStripePayment(null)}
-        />
-      </Elements>
-    ) : (
-      <button onClick={() => setShowStripePayment(m.id)}
-        style={{ background: C.purple, border: 'none', borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 700, color: 'white' }}>
-        ⚡ Payer
-      </button>
-    )
+                 {paid ? (
+  <span style={{ background: C.greenDim, border: `1px solid ${C.green}`, color: C.green, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
+    ✓ Payé
+  </span>
+) : payMethod === 'stripe' ? (
+  showStripePayment === m.id ? (
+    <Elements stripe={stripePromise}>
+      <StripePayment
+        amount={group.amount}
+        groupName={group.name}
+        memberId={m.id}
+        groupId={group.id}
+        onSuccess={() => { togglePaid(m.id); setShowStripePayment(null); }}
+        onCancel={() => setShowStripePayment(null)}
+      />
+    </Elements>
   ) : (
-    <button onClick={() => togglePaid(m.id)} style={{ background: paid ? C.greenDim : C.subtle, border: `1px solid ${paid ? C.green : C.cardBorder}`, color: paid ? C.green : C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
-      {paid ? "✓ Payé" : "Confirmer"}
-    </button>
+    <span style={{ background: C.subtle, border: `1px solid ${C.cardBorder}`, color: C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
+      ⏳ En attente
+    </span>
   )
+) : (
+  <span 
+    onClick={() => group.creator_id === myId ? togglePaid(m.id) : null}
+    style={{ background: C.subtle, border: `1px solid ${C.cardBorder}`, color: group.creator_id === myId ? C.text : C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: group.creator_id === myId ? 'pointer' : 'default' }}>
+    {group.creator_id === myId ? 'Confirmer' : '⏳ En attente'}
+  </span>
 )}
+
                 </div>
               );
             })}
@@ -1330,9 +1336,12 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
                     <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name}{m.isCreator ? " 👑" : ""}</div>
                     <div style={{ fontSize: 11, color: isLate ? C.red : C.muted }}>{isLate ? "⚠ En retard" : `${fmt(monthly)}€ à verser`}</div>
                   </div>
-                 <button onClick={() => togglePaid(m.id)} style={{ background: paid ? C.greenDim : C.subtle, border: `1px solid ${paid ? C.green : C.cardBorder}`, color: paid ? C.green : C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 700 }}>
-  {paid ? "✓ Payé" : payMethod === "stripe" ? "⚡ Auto" : "Confirmer"}
+                 <button 
+  onClick={() => (group.creator_id === myId || m.user_id === myId) && !paid ? togglePaid(m.id) : null}
+  style={{ background: paid ? C.greenDim : C.subtle, border: `1px solid ${paid ? C.green : C.cardBorder}`, color: paid ? C.green : C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: (group.creator_id === myId || m.user_id === myId) && !paid ? "pointer" : "default", fontWeight: 700 }}>
+  {paid ? "✓ Payé" : group.creator_id === myId ? "Confirmer" : m.user_id === myId ? "À payer" : "⏳ En cours"}
 </button>
+
                 </div>
               );
             })}
@@ -1583,6 +1592,7 @@ if (notifs) {
       current_month: 1,
       pay_method: groupData.payMethod,
       iban: groupData.iban || null,
+      max_members: groupData.maxMembers || 10,
       guarantee_percent: groupData.guaranteePercent || 10,
 guarantee_balance: 0,
       started: false,
@@ -1592,14 +1602,20 @@ guarantee_balance: 0,
     .single();
   
   if (!error && newGroup) {
-    const membersToInsert = members.map((m, i) => ({
-      group_id: newGroup.id,
-      name: m.name,
-      is_creator: m.isCreator,
-      active: true,
-      join_order: i + 1,
-      user_id: m.isCreator ? session.user.id : null,
-    }));
+    const { data: creatorProfile } = await supabase
+  .from('profiles')
+  .select('name')
+  .eq('id', session.user.id)
+  .single();
+
+const membersToInsert = members.map((m, i) => ({
+  group_id: newGroup.id,
+  name: m.isCreator ? (creatorProfile?.name || session.user.email.split('@')[0]) : m.name,
+  is_creator: m.isCreator,
+  active: true,
+  join_order: i + 1,
+  user_id: m.isCreator ? session.user.id : null,
+}));
     await supabase.from('group_members').insert(membersToInsert);
     // Créer un compte Stripe Connect pour le groupe
 const stripeRes = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/stripe-connect', {
