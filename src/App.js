@@ -124,7 +124,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
               <Badge color={color}>{g.type === "tontine" ? "🔄 Tontine" : "🎯 Cagnotte"}</Badge>
-              {g.payMethod === "stripe" ? <Badge color={C.purple}>⚡ Stripe</Badge> : <Badge color={C.muted}>🏦 Virement</Badge>}
+              {g.payMethod === "stripe" ? <Badge color={C.purple}>⚡ Stripe</Badge> : <Badge color={C.muted}>🏦 carte</Badge>}
             </div>
             <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16 }}>{g.name}</div>
             <div style={{ color: C.muted, fontSize: 12, marginTop: 3 }}>{active.length} membres actifs</div>
@@ -303,7 +303,7 @@ function CreateView({ onCreate, onBack }) {
       <Card style={{ marginBottom: 10 }}>
         <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 10 }}>MODE DE PAIEMENT</div>
         <div style={{ display: "flex", gap: 8 }}>
-          {[["stripe", "⚡ Stripe", "Prélèvement auto", C.purple], ["virement", "🏦 Virement", "Manuel + confirmation", C.muted]].map(([v, label, sub, col]) => (
+          {[["carte", "💳 Carte / Apple Pay", "Paiement par carte", C.purple], ["stripe", "🏦 Prélèvement SEPA", "Automatique via IBAN", C.teal]].map(([v, label, sub, col]) => (
             <div key={v} onClick={() => setPayMethod(v)} style={{ flex: 1, padding: "10px 12px", borderRadius: 10, cursor: "pointer", border: `2px solid ${payMethod === v ? col : C.cardBorder}`, background: payMethod === v ? col + "15" : "transparent", transition: "all .15s" }}>
               <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 13, color: payMethod === v ? col : C.text }}>{label}</div>
               <div style={{ fontSize: 10, color: C.muted, marginTop: 2 }}>{sub}</div>
@@ -311,7 +311,7 @@ function CreateView({ onCreate, onBack }) {
           ))}
         </div>
       </Card>
-      {payMethod === 'virement' && (
+      {payMethod === 'carte' && (
   <Card style={{ marginBottom: 10 }}>
     <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 6 }}>IBAN (optionnel)</div>
     <input value={iban} onChange={e => setIban(e.target.value.toUpperCase())}
@@ -794,7 +794,7 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
       <button onClick={onBack} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour</button>
       <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
         <Badge color={C.accent}>🔄 Tontine</Badge>
-        <Badge color={payMethod === "stripe" ? C.purple : C.muted}>{payMethod === "stripe" ? "⚡ Stripe" : "🏦 Virement"}</Badge>
+        <Badge color={payMethod === "stripe" ? C.purple : C.muted}>{payMethod === "stripe" ? "⚡ Stripe" : "🏦 carte"}</Badge>
       </div>
       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, marginBottom: 2 }}>{name}</div>
       <div style={{ color: C.muted, fontSize: 12, marginBottom: 20 }}>{active.length} membres · {amount}€/mois · Mois {currentMonth}/{members.length}</div>
@@ -949,13 +949,13 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
       {/* PAYMENTS */}
       {tab === "payments" && (
         <div className="fade-in">
-          {payMethod === "virement" && (
+          {payMethod === "carte" && (
   <Card style={{ marginBottom: 12, borderColor: C.purple + "40", background: C.purpleDim }}>
-    <div style={{ fontSize: 11, color: C.purple, fontWeight: 600, marginBottom: 4 }}>🏦 Mode virement</div>
+    <div style={{ fontSize: 11, color: C.purple, fontWeight: 600, marginBottom: 4 }}>🏦 Mode carte</div>
     <div style={{ fontSize: 12, color: C.muted, marginBottom: group.iban ? 8 : 0 }}>Le créateur confirme chaque versement manuellement. Fenêtre : 1 au 28 du mois.</div>
     {group.iban && (
       <div style={{ background: C.subtle, borderRadius: 8, padding: "10px 12px" }}>
-        <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>IBAN pour virement</div>
+        <div style={{ fontSize: 10, color: C.muted, marginBottom: 4 }}>IBAN pour carte</div>
         <div style={{ fontSize: 14, color: C.text, fontWeight: 700, letterSpacing: ".05em" }}>{group.iban}</div>
         <button onClick={() => navigator.clipboard.writeText(group.iban).then(() => alert('IBAN copié !'))}
           style={{ background: 'none', border: 'none', color: C.purple, fontSize: 11, cursor: 'pointer', marginTop: 4, fontWeight: 600 }}>
@@ -966,11 +966,14 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
   </Card>
 )}
           {payMethod === "stripe" && (
-            <Card style={{ marginBottom: 12, borderColor: C.purple + "40", background: C.purpleDim }}>
-              <div style={{ fontSize: 11, color: C.purple, fontWeight: 600, marginBottom: 4 }}>⚡ Prélèvement Stripe automatique</div>
-              <div style={{ fontSize: 12, color: C.muted }}>Prélevé automatiquement entre le 1 et le 28. S'arrête au dernier mois du cycle.</div>
-            </Card>
-          )}
+  <Card style={{ marginBottom: 12, borderColor: C.purple + "40", background: C.purpleDim }}>
+    <div style={{ fontSize: 11, color: C.purple, fontWeight: 600, marginBottom: 4 }}>⚡ Prélèvement automatique</div>
+    <div style={{ fontSize: 12, color: C.muted }}>
+      Si vous avez renseigné votre IBAN → prélèvement automatique le 1er du mois.<br/>
+      Sinon → paiement par carte requis.
+    </div>
+  </Card>
+)}
           <Card>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>Mois {currentMonth}</div>
@@ -989,27 +992,37 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
                       {isRecipient ? "🎉 Bénéficiaire" : isLate ? "⚠ En retard" : `${fmt(amount)}€ à verser`}
                     </div>
                   </div>
+
+                  {(() => { console.log('m.user_id:', m.user_id, 'myId:', myId); return null; })()}
                  {paid ? (
   <span style={{ background: C.greenDim, border: `1px solid ${C.green}`, color: C.green, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
     ✓ Payé
   </span>
-) : payMethod === 'stripe' ? (
-  showStripePayment === m.id ? (
-    <Elements stripe={stripePromise}>
-      <StripePayment
-        amount={group.amount}
-        groupName={group.name}
-        memberId={m.id}
-        groupId={group.id}
-        onSuccess={() => { togglePaid(m.id); setShowStripePayment(null); }}
-        onCancel={() => setShowStripePayment(null)}
-      />
-    </Elements>
+) : payMethod === 'carte' ? (
+  m.user_id === myId ? (
+    showStripePayment === m.id ? (
+      <Elements stripe={stripePromise}>
+        <StripePayment
+          amount={group.amount}
+          groupName={group.name}
+          memberId={m.id}
+          groupId={group.id}
+          onSuccess={() => { togglePaid(m.id); setShowStripePayment(null); }}
+          onCancel={() => setShowStripePayment(null)}
+        />
+      </Elements>
+    ) : (
+      <button onClick={() => setShowStripePayment(m.id)}
+        style={{ background: C.purple, border: 'none', borderRadius: 8, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 700, color: 'white' }}>
+        ⚡ Payer
+      </button>
+    )
   ) : (
     <span style={{ background: C.subtle, border: `1px solid ${C.cardBorder}`, color: C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
       ⏳ En attente
     </span>
   )
+
 ) : (
   <span 
     onClick={() => group.creator_id === myId ? togglePaid(m.id) : null}
@@ -1215,7 +1228,7 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
       <button onClick={onBack} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour</button>
       <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
         <Badge color={C.teal}>🎯 Cagnotte</Badge>
-        <Badge color={payMethod === "stripe" ? C.purple : C.muted}>{payMethod === "stripe" ? "⚡ Stripe" : "🏦 Virement"}</Badge>
+        <Badge color={payMethod === "stripe" ? C.purple : C.muted}>{payMethod === "stripe" ? "⚡ Stripe" : "🏦 carte"}</Badge>
       </div>
       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, marginBottom: 2 }}>{name}</div>
       <div style={{ color: C.muted, fontSize: 12, marginBottom: 20 }}>{active.length} membres · Objectif {fmt(goal)}€ · {months} mois</div>
@@ -1269,9 +1282,9 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
 
       {tab === "payments" && (
         <div className="fade-in">
-          {payMethod === "virement" && (
+          {payMethod === "carte" && (
             <Card style={{ marginBottom: 12, borderColor: C.purple + "40", background: C.purpleDim }}>
-              <div style={{ fontSize: 11, color: C.purple, fontWeight: 600, marginBottom: 4 }}>🏦 Virement manuel</div>
+              <div style={{ fontSize: 11, color: C.purple, fontWeight: 600, marginBottom: 4 }}>🏦 carte manuel</div>
               <div style={{ fontSize: 12, color: C.muted }}>Le créateur confirme chaque versement. Fenêtre : 1 au 28 du mois.</div>
             </Card>
           )}
@@ -1489,7 +1502,17 @@ console.log('Member groups loaded:', memberGroups);
 
 
 
+// Charger les profils des membres
+const memberUserIds = allGroups.flatMap(g => 
+  (g.group_members || []).map(m => m.user_id).filter(Boolean)
+);
+const { data: profiles } = memberUserIds.length > 0 ? await supabase
+  .from('profiles')
+  .select('id, iban, name')
+  .in('id', memberUserIds) : { data: [] };
 
+const profilesMap = {};
+(profiles || []).forEach(p => { profilesMap[p.id] = p; });
   if (uniqueGroups.length >= 0) {
     const normalized = uniqueGroups.map(g => {
       // Convertir payments array en objet {mois: {memberId: bool}}
@@ -1502,7 +1525,11 @@ console.log('Member groups loaded:', memberGroups);
         ...g,
         currentMonth: g.current_month,
         payMethod: g.pay_method,
-        members: g.group_members || [],
+        members: (g.group_members || []).map(m => ({
+  ...m,
+  has_iban: !!(profilesMap[m.user_id]?.iban),
+  profileName: profilesMap[m.user_id]?.name,
+})),
         payments: paymentsObj,
         banVotes: g.ban_votes || {},
         banCandidates: [],
@@ -1608,7 +1635,7 @@ if (accountId) {
 const allPaid = Object.values(updated.payments[updated.currentMonth - 1] || {})
   .filter(Boolean).length === (updated.members || []).filter(m => m.active).length;
 
-// Virement automatique au bénéficiaire si tous ont payé
+// carte automatique au bénéficiaire si tous ont payé
 if (allPaid && updated.type === 'tontine') {
   const activeMembers = (updated.members || []).filter(m => m.active);
   const recipientMember = activeMembers[updated.currentMonth - 1] || activeMembers[0];
