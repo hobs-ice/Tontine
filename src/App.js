@@ -757,7 +757,7 @@ const netPot = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
   const monthPaid = (mi, pi) => payments?.[mi]?.[pi] ?? false;
   const allPaid = active.every(m => monthPaid(currentMonth - 1, m.id));
   const myId = session?.user?.id;
-const myMember = members.find(m => m.user_id === myId);
+
 
   const togglePaid = (memberId) => {
     const p = { ...group.payments };
