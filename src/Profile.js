@@ -155,15 +155,20 @@ export default function Profile({ session, onBack, isOnboarding = false }) {
           style={{ width: '100%', background: C.subtle, border: 'none', borderRadius: 8, padding: '10px 12px', color: C.text, outline: 'none', fontSize: 13, letterSpacing: '.05em' }} />
       </div>
 
-      {message && (
+       {message && (
         <div style={{ background: '#0a1a0a', border: '1px solid #10b98140', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: C.green, marginBottom: 12 }}>
           {message}
         </div>
       )}
 
-        </div>
+      <button onClick={saveProfile} disabled={saving}
+        style={{ width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: C.accent, color: '#080b12', fontWeight: 800, fontSize: 15, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
+        {saving ? '⏳...' : isOnboarding ? '🚀 Commencer' : '💾 Sauvegarder'}
+      </button>
+    </div>
   );
 }
+
 
   
 
