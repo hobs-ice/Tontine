@@ -1212,10 +1212,20 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
     onUpdate({ ...group, payments: p });
   };
 
-  const voteUnlock = (vote) => {
-    const uv = { ...group.unlockVotes, [myId]: vote };
-    onUpdate({ ...group, unlockVotes: uv });
-  };
+  const voteUnlock = async (vote) => {
+  const uv = { ...group.unlockVotes, [myId]: vote };
+  const updatedGroup = { ...group, unlockVotes: uv };
+  
+  // Vérifier si unanimité atteinte
+  const newUnlockYes = Object.values(uv).filter(v => v === "yes").length;
+  if (newUnlockYes === active.length) {
+    // Archiver automatiquement
+    await supabase.from('groups').update({ archived: true }).eq('id', group.id);
+    updatedGroup.archived = true;
+  }
+  
+  onUpdate(updatedGroup);
+};
 
   const requestRefund = () => {
     const rr = [...(refundRequests || [])];
