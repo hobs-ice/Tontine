@@ -1077,12 +1077,28 @@ onUpdate(updatedGroup);
       })}
     </Card>
     {group.started && currentMonth === members.filter(m => m.active).length && (
-      <Card style={{ marginTop: 12, borderColor: C.green + "50", background: C.greenDim, textAlign: "center", padding: 24 }}>
-        <div style={{ fontSize: 28, marginBottom: 8 }}>🎉</div>
-        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: C.green }}>Cycle terminé !</div>
-        <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>Tout le monde a reçu sa part. Les prélèvements sont arrêtés.</div>
-      </Card>
+  <Card style={{ marginTop: 12, borderColor: C.green + "50", background: C.greenDim, textAlign: "center", padding: 24 }}>
+    <div style={{ fontSize: 28, marginBottom: 8 }}>🎉</div>
+    <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, color: C.green }}>Cycle terminé !</div>
+    <div style={{ fontSize: 12, color: C.muted, marginTop: 4, marginBottom: 16 }}>Tout le monde a reçu sa part.</div>
+    {group.creator_id === session?.user?.id && (
+      <button onClick={async () => {
+        if (window.confirm('Relancer un nouveau cycle avec les mêmes membres ?')) {
+          // Remettre à zéro les paiements et le mois
+          await supabase.from('payments').delete().eq('group_id', group.id);
+          await supabase.from('groups').update({
+            current_month: 1,
+            started: false,
+            guarantee_balance: group.guarantee_balance || 0,
+          }).eq('id', group.id);
+          onUpdate({ ...group, currentMonth: 1, started: false, payments: {} });
+        }
+      }} style={{ background: C.green, border: 'none', borderRadius: 10, padding: '12px 24px', color: '#080b12', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
+        🔄 Relancer un nouveau cycle
+      </button>
     )}
+  </Card>
+)}
   </div>
 )}
 
