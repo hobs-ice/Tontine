@@ -1,13 +1,17 @@
 import { useState } from 'react';
 import { supabase } from './supabase';
 
+import Legal from './Legal';
+
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
-  const [iban, setIban] = useState('');
+  const [iban] = useState(''); // eslint-disable-line no-unused-vars
+  const [acceptCgu, setAcceptCgu] = useState(false);
+const [showLegal, setShowLegal] = useState(null);
   const C = {
     bg: "#080b12", card: "#0e1420", cardBorder: "#1c2535",
     accent: "#f0b429", text: "#f1f5f9", muted: "#64748b",
@@ -16,6 +20,11 @@ export default function Auth() {
   const handleAuth = async () => {
     setLoading(true);
     setMessage('');
+    if (!isLogin && !acceptCgu) {
+  setMessage('Vous devez accepter les CGU pour continuer');
+  setLoading(false);
+  return;
+}
     try {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -24,6 +33,7 @@ export default function Auth() {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) setMessage(error.message);
         else {
+          
   setMessage('Vérifie ton email pour confirmer ton compte !');
   if (iban) {
     const { data: userData } = await supabase.auth.getUser();
@@ -41,7 +51,7 @@ export default function Auth() {
     }
     setLoading(false);
   };
-
+if (showLegal) return <Legal type={showLegal} onBack={() => setShowLegal(null)} />;
   return (
     <div style={{ maxWidth: 400, margin: '0 auto', padding: '60px 16px', background: C.bg, minHeight: '100vh' }}>
       <div style={{ textAlign: 'center', marginBottom: 40 }}>
@@ -76,19 +86,7 @@ export default function Auth() {
           onChange={e => setPassword(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAuth()}
           style={{ width: '100%', background: '#0a0f1a', border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '12px 16px', color: C.text, fontSize: 15, outline: 'none', marginBottom: 16 }} />
-          {!isLogin && (
-  <div>
-    <input
-      type="text"
-      placeholder="IBAN (optionnel — pour recevoir vos virements)"
-      value={iban}
-      onChange={e => setIban(e.target.value.toUpperCase())}
-      style={{ width: '100%', background: '#0a0f1a', border: `1px solid ${C.cardBorder}`, borderRadius: 10, padding: '12px 16px', color: C.text, fontSize: 13, outline: 'none', marginBottom: 10, letterSpacing: '.05em' }} />
-    <div style={{ fontSize: 11, color: C.muted, marginBottom: 10 }}>
-      💡 Renseignez votre IBAN pour recevoir automatiquement votre part quand ce sera votre tour.
-    </div>
-  </div>
-)}
+          
 
 
         {message && (
@@ -97,6 +95,24 @@ export default function Auth() {
           </div>
         )}
 
+{!isLogin && (
+  <div style={{ marginBottom: 12 }}>
+    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+      <input type="checkbox" checked={acceptCgu} onChange={e => setAcceptCgu(e.target.checked)}
+        style={{ marginTop: 2 }} />
+      <span style={{ fontSize: 12, color: C.muted }}>
+        J'accepte les{' '}
+        <button onClick={() => setShowLegal('cgu')} style={{ background: 'none', border: 'none', color: C.accent, cursor: 'pointer', fontSize: 12, padding: 0 }}>
+          CGU
+        </button>
+        {' '}et la{' '}
+        <button onClick={() => setShowLegal('privacy')} style={{ background: 'none', border: 'none', color: C.accent, cursor: 'pointer', fontSize: 12, padding: 0 }}>
+          Politique de confidentialité
+        </button>
+      </span>
+    </label>
+  </div>
+)}
         <button onClick={handleAuth} disabled={loading || !email || !password}
           style={{ width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: C.accent, color: '#080b12', fontWeight: 800, fontSize: 15, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}>
           {loading ? '⏳ Chargement...' : isLogin ? '🔐 Se connecter' : '🚀 Créer mon compte'}
