@@ -228,7 +228,7 @@ function CreateView({ onCreate, onBack }) {
   const [payMethod, setPayMethod] = useState("stripe");
   const [iban, setIban] = useState('');
   const [guaranteePercent, setGuaranteePercent] = useState(10);
-  const [showSettings, setShowSettings] = useState(false);
+ 
   const [members] = useState([{ id: 0, name: "Créateur", isCreator: true, active: true, joined: 1 }]);
   const [maxMembers, setMaxMembers] = useState('');
   
