@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import Auth from './Auth';
 import Profile from './Profile';
+import Settings from './Settings';
 
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
+
 
 // ── DESIGN TOKENS ─────────────────────────────────────────────
 const C = {
@@ -105,7 +107,7 @@ function FeeNote({ amount }) {
 
 
 // ── HOME ──────────────────────────────────────────────────────
-function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadCount, onNotifications }) {
+function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadCount, onNotifications, onSettings }) {
   console.log('Profile in HomeView:', profile);
   const tontines = groups.filter(g => g.type === "tontine");
   
@@ -178,6 +180,9 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
     )}
   </button>
   <span style={{ color: C.muted, fontSize: 12 }}>|</span>
+  <button onClick={onSettings} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 18 }}>
+  ⚙️
+</button>
   <button onClick={onLogout} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12 }}>
     Déconnexion
   </button>
@@ -223,7 +228,7 @@ function CreateView({ onCreate, onBack }) {
   const [payMethod, setPayMethod] = useState("stripe");
   const [iban, setIban] = useState('');
   const [guaranteePercent, setGuaranteePercent] = useState(10);
-  
+  const [showSettings, setShowSettings] = useState(false);
   const [members] = useState([{ id: 0, name: "Créateur", isCreator: true, active: true, joined: 1 }]);
   const [maxMembers, setMaxMembers] = useState('');
   
@@ -1424,6 +1429,7 @@ const [profile, setProfile] = useState(null);
 const [notifications, setNotifications] = useState([]);
 const [unreadCount, setUnreadCount] = useState(0);
 const [showNotifications, setShowNotifications] = useState(false);
+const [showSettings, setShowSettings] = useState(false);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -1768,7 +1774,7 @@ if (joinToken && session) return <JoinGroup token={joinToken} session={session} 
     <Profile session={session} onBack={() => loadGroups()} isOnboarding={true} />
   </div>
 );
-
+  if (showSettings) return <Settings session={session} onBack={() => setShowSettings(false)} />;
   if (showNotifications) return <NotificationsView 
   notifications={notifications}
   session={session}
@@ -1793,7 +1799,7 @@ if (joinToken && session) return <JoinGroup token={joinToken} session={session} 
     const props = { group: g, onBack: () => setView("home"), onUpdate: updateGroup, session };
     return g.type === "tontine" ? <TontineDetail {...props} /> : <CagnotteDetail {...props} />;
   }
-  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} onProfile={() => setShowProfile(true)} profile={profile} onNotifications={() => setShowNotifications(true)} unreadCount={unreadCount}/>;
+  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} onProfile={() => setShowProfile(true)} profile={profile} onNotifications={() => setShowNotifications(true)}onSettings={() => setShowSettings(true)} unreadCount={unreadCount}/>;
 }
 
 

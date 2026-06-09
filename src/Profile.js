@@ -161,10 +161,9 @@ export default function Profile({ session, onBack, isOnboarding = false }) {
         </div>
       )}
 
-      <button onClick={saveProfile} disabled={saving}
-        style={{ width: '100%', padding: '13px', borderRadius: 10, border: 'none', background: C.accent, color: '#080b12', fontWeight: 800, fontSize: 15, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
-        {saving ? '⏳...' : isOnboarding ? '🚀 Commencer' : '💾 Sauvegarder'}
-      </button>
-    </div>
+        </div>
   );
 }
+
+  
+
