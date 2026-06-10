@@ -126,10 +126,12 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
               <Badge color={color}>{g.type === "tontine" ? "🔄 Tontine" : "🎯 Cagnotte"}</Badge>
-              {g.pay_method === "carte" ? <Badge color={C.purple}>💳 Carte</Badge> : <Badge color={C.teal}>🏦 SEPA</Badge>}
+              {g.pay_method === "carte" ? <Badge color={C.purple}>💳 Carte</Badge> : <Badge color={C.teal}>⚡ SEPA</Badge>}
             </div>
             <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16 }}>{g.name}</div>
-            <div style={{ color: C.muted, fontSize: 12, marginTop: 3 }}>{active.length} membres actifs</div>
+            <div style={{ color: C.muted, fontSize: 12, marginTop: 3 }}>
+  {active.length} membre{active.length > 1 ? 's' : ''} actif{active.length > 1 ? 's' : ''}
+</div>
           </div>
           <div style={{ textAlign: "right" }}>
             <Donut paid={paidCount} total={active.length} color={color} size={64} />
