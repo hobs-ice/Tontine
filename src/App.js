@@ -841,13 +841,14 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
         
 
           
-       {group.creator_id === session?.user?.id && (
+       {group.creator_id === session?.user?.id && !group.started && (
   <Card style={{ marginBottom: 12 }}>
     <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>📧 Inviter un membre</div>
     <InviteForm groupId={group.id} />
   </Card>
 )}
 
+{!group.started && (
 <Card style={{ marginBottom: 12 }}>
   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>🔗 Lien d'invitation</div>
   <div style={{ background: C.subtle, borderRadius: 8, padding: '10px 12px', fontSize: 12, color: C.muted, marginBottom: 10, wordBreak: 'break-all' }}>
@@ -869,6 +870,7 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
     </a>
   </div>
 </Card>
+)}
 
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
