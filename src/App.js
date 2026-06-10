@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import Auth from './Auth';
 import Profile from './Profile';
 import Settings from './Settings';
+import Onboarding from './Onboarding';
 
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
@@ -109,9 +110,8 @@ function FeeNote({ amount }) {
 // ── HOME ──────────────────────────────────────────────────────
 function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadCount, onNotifications, onSettings }) {
   console.log('Profile in HomeView:', profile);
-  const tontines = groups.filter(g => g.type === "tontine");
-  
-  const cagnottes = groups.filter(g => g.type === "cagnotte");
+  const tontines = groups.filter(g => g.type === "tontine" && !g.archived);
+    const cagnottes = groups.filter(g => g.type === "cagnotte" && !g.archived);
 
   function GroupCard({ g }) {
     const active = g.members.filter(m => m.active);
@@ -119,6 +119,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
     const paidCount = active.filter(m => monthPayments[m.id]).length;
     const color = g.type === "tontine" ? C.accent : C.teal;
     const isLate = DAY > 28;
+    
 
     return (
       <Card onClick={() => onOpen(g.id)} style={{ marginBottom: 10, transition: "border-color .2s", borderColor: isLate && paidCount < active.length ? C.red + "60" : C.cardBorder }}>
@@ -210,6 +211,23 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
               {cagnottes.map(g => <GroupCard key={g.id} g={g} />)}
             </div>
           )}
+
+          {groups.filter(g => g.archived).length > 0 && (
+  <div style={{ marginBottom: 24 }}>
+    <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10 }}>📦 Archives</div>
+    {groups.filter(g => g.archived).map(g => (
+      <Card key={g.id} onClick={() => onOpen(g.id)} style={{ marginBottom: 10, opacity: 0.5 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15 }}>{g.name}</div>
+            <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>{g.type === "tontine" ? "🔄 Tontine" : "🎯 Cagnotte"} · Archivé</div>
+          </div>
+          <Badge color={C.muted}>📦 Archivé</Badge>
+        </div>
+      </Card>
+    ))}
+  </div>
+)}          
           <Btn onClick={onNew} style={{ width: "100%" }}>+ Nouveau groupe</Btn>
         </>
       )}
@@ -228,6 +246,7 @@ function CreateView({ onCreate, onBack }) {
   const [payMethod, setPayMethod] = useState("stripe");
   const [iban, setIban] = useState('');
   const [guaranteePercent, setGuaranteePercent] = useState(10);
+  
  
   const [members] = useState([{ id: 0, name: "Créateur", isCreator: true, active: true, joined: 1 }]);
   const [maxMembers, setMaxMembers] = useState('');
@@ -1458,6 +1477,7 @@ const [notifications, setNotifications] = useState([]);
 const [unreadCount, setUnreadCount] = useState(0);
 const [showNotifications, setShowNotifications] = useState(false);
 const [showSettings, setShowSettings] = useState(false);
+const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -1577,7 +1597,11 @@ const profilesMap = {};
   .from('profiles')
   .select('*')
   .eq('id', session.user.id);
-if (profiles && profiles.length > 0) setProfile(profiles[0]);
+if (profiles && profiles.length > 0) {
+  setProfile(profiles[0]);
+  if (!profiles[0].onboarding_complete) setShowOnboarding(true);
+}
+
 const { data: notifs } = await supabase
   .from('notifications')
   .select('*')
@@ -1791,6 +1815,10 @@ if (joinToken && !session) return <Auth onJoinToken={joinToken} />;
 if (joinToken && session) return <JoinGroup token={joinToken} session={session} onDone={() => { setJoinToken(null); loadGroups(); }} />;
 
   if (!session) return <Auth />;
+  if (showOnboarding) return <Onboarding onComplete={async () => {
+  await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', session.user.id);
+  setShowOnboarding(false);
+}} />;
   if (showProfile && session) return <Profile session={session} onBack={() => { setShowProfile(false); loadGroups(); }} />;
   if (session && !profile?.name) return (
   <div style={{ maxWidth: 480, margin: '0 auto', padding: '60px 16px', background: C.bg, minHeight: '100vh' }}>
