@@ -64,6 +64,14 @@ export default function Settings({ session, onBack }) {
         </a>
       </div>
 
+{/* DÉCONNEXION */}
+<div style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10 }}>Session</div>
+<div style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 16, marginBottom: 20, overflow: 'hidden' }}>
+  <button onClick={() => supabase.auth.signOut()}
+    style={{ width: '100%', padding: '14px 16px', background: 'none', border: 'none', color: C.text, fontSize: 13, cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}>
+    🚪 Se déconnecter <span style={{ color: C.muted }}>›</span>
+  </button>
+</div>
       {/* DANGER */}
       <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10 }}>Danger</div>
       <div style={{ background: C.redDim, border: `1px solid ${C.red}30`, borderRadius: 16, overflow: 'hidden' }}>

@@ -109,9 +109,9 @@ function FeeNote({ amount }) {
 
 // ── HOME ──────────────────────────────────────────────────────
 function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadCount, onNotifications, onSettings }) {
-  console.log('Profile in HomeView:', profile);
   const tontines = groups.filter(g => g.type === "tontine" && !g.archived);
-    const cagnottes = groups.filter(g => g.type === "cagnotte" && !g.archived);
+  const cagnottes = groups.filter(g => g.type === "cagnotte" && !g.archived);
+  const archives = groups.filter(g => g.archived);
 
   function GroupCard({ g }) {
     const active = g.members.filter(m => m.active);
@@ -119,7 +119,6 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
     const paidCount = active.filter(m => monthPayments[m.id]).length;
     const color = g.type === "tontine" ? C.accent : C.teal;
     const isLate = DAY > 28;
-    
 
     return (
       <Card onClick={() => onOpen(g.id)} style={{ marginBottom: 10, transition: "border-color .2s", borderColor: isLate && paidCount < active.length ? C.red + "60" : C.cardBorder }}>
@@ -127,7 +126,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
           <div style={{ flex: 1 }}>
             <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
               <Badge color={color}>{g.type === "tontine" ? "🔄 Tontine" : "🎯 Cagnotte"}</Badge>
-              {g.payMethod === "stripe" ? <Badge color={C.purple}>⚡ Stripe</Badge> : <Badge color={C.muted}>🏦 carte</Badge>}
+              {g.pay_method === "carte" ? <Badge color={C.purple}>💳 Carte</Badge> : <Badge color={C.teal}>🏦 SEPA</Badge>}
             </div>
             <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16 }}>{g.name}</div>
             <div style={{ color: C.muted, fontSize: 12, marginTop: 3 }}>{active.length} membres actifs</div>
@@ -138,11 +137,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
           </div>
         </div>
         <div style={{ marginTop: 12 }}>
-          <ProgressBar
-            value={g.currentMonth - 1}
-            max={g.type === "tontine" ? g.members.length : g.months}
-            color={color}
-          />
+          <ProgressBar value={g.currentMonth - 1} max={g.type === "tontine" ? g.members.length : g.months} color={color} />
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
             <span style={{ fontSize: 11, color: C.muted }}>Mois {g.currentMonth}</span>
             <span style={{ fontSize: 11, color }}>
@@ -160,80 +155,88 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
   }
 
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto", padding: "32px 16px" }}>
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 30, fontWeight: 800, letterSpacing: "-.03em" }}>🫂 Tontine</div>
-        <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>L'épargne collective entre amis</div>
-       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-  <button onClick={onProfile} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-    {profile?.avatar_url ? (
-      <img src={profile.avatar_url} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
-    ) : (
-      <span style={{ fontSize: 20 }}>👤</span>
-    )}
-  </button>
-  <button onClick={onNotifications} style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative' }}>
-    🔔
-    {unreadCount > 0 && (
-      <span style={{ position: 'absolute', top: -4, right: -4, background: C.red, color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-        {unreadCount}
-      </span>
-    )}
-  </button>
-  <span style={{ color: C.muted, fontSize: 12 }}>|</span>
-  <button onClick={onSettings} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 18 }}>
-  ⚙️
-</button>
-  <button onClick={onLogout} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 12 }}>
-    Déconnexion
-  </button>
-</div>
+    <div style={{ maxWidth: 480, margin: "0 auto", background: C.bg, minHeight: '100vh' }}>
+      
+      {/* NAVBAR */}
+      <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${C.cardBorder}`, position: 'sticky', top: 0, background: C.bg, zIndex: 100 }}>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800, letterSpacing: "-.02em" }}>🫂 Tontine</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button onClick={onNotifications} style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', fontSize: 20 }}>
+            🔔
+            {unreadCount > 0 && (
+              <span style={{ position: 'absolute', top: -4, right: -4, background: C.red, color: 'white', borderRadius: '50%', width: 16, height: 16, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                {unreadCount}
+              </span>
+            )}
+          </button>
+          <button onClick={onSettings} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>⚙️</button>
+          <button onClick={onProfile} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${C.accent}` }} />
+            ) : (
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: C.subtle, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, border: `2px solid ${C.cardBorder}` }}>👤</div>
+            )}
+          </button>
+        </div>
       </div>
 
-      {groups.length === 0 ? (
-        <Card style={{ textAlign: "center", padding: 48 }}>
-          <div style={{ fontSize: 44, marginBottom: 12 }}>🪙</div>
-          <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, marginBottom: 8 }}>Aucun groupe</div>
-          <div style={{ color: C.muted, fontSize: 13, marginBottom: 20 }}>Crée ta première tontine ou cagnotte</div>
-          <Btn onClick={onNew}>+ Créer un groupe</Btn>
-        </Card>
-      ) : (
-        <>
-          {tontines.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10 }}>🔄 Tontines</div>
-              {tontines.map(g => <GroupCard key={g.id} g={g} />)}
-            </div>
-          )}
-          {cagnottes.length > 0 && (
-            <div style={{ marginBottom: 24 }}>
-              <div style={{ fontSize: 11, color: C.teal, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10 }}>🎯 Cagnottes</div>
-              {cagnottes.map(g => <GroupCard key={g.id} g={g} />)}
-            </div>
-          )}
+      <div style={{ padding: '24px 16px' }}>
 
-          {groups.filter(g => g.archived).length > 0 && (
-  <div style={{ marginBottom: 24 }}>
-    <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10 }}>📦 Archives</div>
-    {groups.filter(g => g.archived).map(g => (
-      <Card key={g.id} onClick={() => onOpen(g.id)} style={{ marginBottom: 10, opacity: 0.5 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15 }}>{g.name}</div>
-            <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>{g.type === "tontine" ? "🔄 Tontine" : "🎯 Cagnotte"} · Archivé</div>
+        {/* SALUTATION */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: C.text }}>
+            Bonjour {profile?.name?.split(' ')[0] || ''} 👋
           </div>
-          <Badge color={C.muted}>📦 Archivé</Badge>
+          <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>L'épargne collective entre amis</div>
         </div>
-      </Card>
-    ))}
-  </div>
-)}          
-          <Btn onClick={onNew} style={{ width: "100%" }}>+ Nouveau groupe</Btn>
-        </>
-      )}
+
+        {groups.filter(g => !g.archived).length === 0 ? (
+          <div style={{ textAlign: "center", padding: '48px 24px' }}>
+            <div style={{ fontSize: 64, marginBottom: 16 }}>🪙</div>
+            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 20, marginBottom: 8 }}>Aucun groupe</div>
+            <div style={{ color: C.muted, fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>
+              Crée ta première tontine ou cagnotte et invite tes proches !
+            </div>
+            <Btn onClick={onNew}>+ Créer un groupe</Btn>
+          </div>
+        ) : (
+          <>
+            {tontines.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, color: C.accent, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10 }}>🔄 Tontines</div>
+                {tontines.map(g => <GroupCard key={g.id} g={g} />)}
+              </div>
+            )}
+            {cagnottes.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, color: C.teal, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10 }}>🎯 Cagnottes</div>
+                {cagnottes.map(g => <GroupCard key={g.id} g={g} />)}
+              </div>
+            )}
+            {archives.length > 0 && (
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: 11, color: C.muted, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", marginBottom: 10 }}>📦 Archives</div>
+                {archives.map(g => (
+                  <Card key={g.id} onClick={() => onOpen(g.id)} style={{ marginBottom: 10, opacity: 0.5 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 15 }}>{g.name}</div>
+                        <div style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>{g.type === "tontine" ? "🔄 Tontine" : "🎯 Cagnotte"} · Archivé</div>
+                      </div>
+                      <Badge color={C.muted}>📦 Archivé</Badge>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+            <Btn onClick={onNew} style={{ width: "100%" }}>+ Nouveau groupe</Btn>
+          </>
+        )}
+      </div>
     </div>
   );
 }
+
 
 // ── CREATE ────────────────────────────────────────────────────
 function CreateView({ onCreate, onBack }) {
