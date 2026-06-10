@@ -160,7 +160,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
     <div style={{ maxWidth: 480, margin: "0 auto", background: C.bg, minHeight: '100vh' }}>
       
       {/* HEADER FIXE */}
-      <div style={{ position: 'sticky', top: 0, background: C.bg, zIndex: 100, borderBottom: `1px solid ${C.cardBorder}`, paddingTop: 'env(safe-area-inset-top)' }}>
+      <div style={{ position: 'sticky', top: -1, background: C.bg, zIndex: 100, borderBottom: `1px solid ${C.cardBorder}`, paddingTop: 'env(safe-area-inset-top)' }}>
         {/* NAVBAR */}
         <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800, letterSpacing: "-.02em" }}>🫂 Tontine</div>
