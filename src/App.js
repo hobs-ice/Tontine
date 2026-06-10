@@ -128,7 +128,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
               <Badge color={color}>{g.type === "tontine" ? "🔄 Tontine" : "🎯 Cagnotte"}</Badge>
               {g.pay_method === "carte" ? <Badge color={C.purple}>💳 Carte</Badge> : <Badge color={C.teal}>⚡ SEPA</Badge>}
             </div>
-            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16 }}>{g.name}</div>
+            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, textTransform: 'capitalize' }}>{g.name}</div>
             <div style={{ color: C.muted, fontSize: 12, marginTop: 3 }}>
   {active.length} membre{active.length > 1 ? 's' : ''} actif{active.length > 1 ? 's' : ''}
 </div>
@@ -159,8 +159,10 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", background: C.bg, minHeight: '100vh' }}>
       
-      {/* NAVBAR */}
-      <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: `1px solid ${C.cardBorder}`, position: 'sticky', top: 0, background: C.bg, zIndex: 100 }}>
+      {/* HEADER FIXE */}
+      <div style={{ position: 'sticky', top: 0, background: C.bg, zIndex: 100, borderBottom: `1px solid ${C.cardBorder}` }}>
+        {/* NAVBAR */}
+        <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800, letterSpacing: "-.02em" }}>🫂 Tontine</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button onClick={onNotifications} style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', fontSize: 20 }}>
@@ -180,9 +182,10 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
             )}
           </button>
         </div>
+        </div>
       </div>
 
-      <div style={{ padding: '24px 16px' }}>
+      <div style={{ padding: '16px' }}>
 
         {/* SALUTATION */}
         <div style={{ marginBottom: 24 }}>
@@ -231,7 +234,9 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
                 ))}
               </div>
             )}
-            <Btn onClick={onNew} style={{ width: "100%" }}>+ Nouveau groupe</Btn>
+            <div style={{ position: 'sticky', bottom: 16, marginTop: 8 }}>
+  <Btn onClick={onNew} style={{ width: "100%", boxShadow: '0 4px 24px rgba(240,180,41,0.3)' }}>+ Nouveau groupe</Btn>
+</div>
           </>
         )}
       </div>
