@@ -832,7 +832,10 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
         <Badge color={payMethod === "carte" ? C.purple : C.teal}>{payMethod === "carte" ? "💳 Carte" : "⚡ SEPA"}</Badge>
       </div>
       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, marginBottom: 2 }}>{name}</div>
-      <div style={{ color: C.muted, fontSize: 12, marginBottom: 20 }}>{active.length} membres · {amount}€/mois · Mois {currentMonth}/{members.length}</div>
+      <div style={{ color: C.muted, fontSize: 12, marginBottom: 20 }}>
+  {active.length} membres · {amount}€/mois · Mois {currentMonth}/{members.length} · 
+  {group.creator_id === session?.user?.id ? ' 👑 Vous êtes créateur' : ` Créé par ${members.find(m => m.is_creator)?.name || '?'}`}
+</div>
 
       {/* tabs */}
       <div style={{ display: "flex", gap: 4, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
