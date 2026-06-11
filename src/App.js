@@ -968,18 +968,20 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
               🎉 Bénéficiaire : <strong style={{ color: C.accent }}>{monthRecipient?.name}</strong> · {fmt(pot * 0.96)}€ net
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {active.map(m => {
-                const isRecipient = m.id === monthRecipient?.id;
-                const paid = isRecipient || monthPayments[m.id];
-                return (
-                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: paid ? C.greenDim : C.redDim, borderRadius: 8, padding: '4px 8px', border: `1px solid ${paid ? C.green : C.red}30` }}>
-                    <span style={{ fontSize: 10 }}>{paid ? '✓' : '✗'}</span>
-                    <span style={{ fontSize: 11, color: paid ? C.green : C.red }}>{m.name}</span>
-                    {isRecipient && <span style={{ fontSize: 10 }}>🎉</span>}
-                  </div>
-                );
-              })}
-            </div>
+  {active.map(m => {
+    const isRecipient = m.id === monthRecipient?.id;
+    const paid = monthPayments[m.id];
+    return (
+      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 4, 
+        background: isRecipient ? C.accentDim : paid ? C.greenDim : C.redDim, 
+        borderRadius: 8, padding: '5px 10px', 
+        border: `1px solid ${isRecipient ? C.accent : paid ? C.green : C.red}40` }}>
+        <span style={{ fontSize: 10 }}>{isRecipient ? '🏆' : paid ? '✓' : '✗'}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: isRecipient ? C.accent : paid ? C.green : C.red }}>{m.name}</span>
+      </div>
+    );
+  })}
+</div>
             <ProgressBar value={paidCount} max={active.length} color={isComplete ? C.green : C.accent} height={4} />
             <div style={{ fontSize: 10, color: C.muted, marginTop: 4 }}>{paidCount}/{active.length} versements</div>
           </div>
@@ -1018,10 +1020,13 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
   </Card>
 )}
           <Card>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>Mois {currentMonth}</div>
-              {allPaid && <Badge color={C.green}>✓ Complet</Badge>}
-            </div>
+  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+    <div>
+      <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 16 }}>Mois {currentMonth}</div>
+      <div style={{ fontSize: 11, color: C.muted }}>{active.filter(m => monthPaid(currentMonth - 1, m.id)).length}/{active.length} versements reçus</div>
+    </div>
+    {allPaid && <Badge color={C.green}>✓ Complet</Badge>}
+  </div>
             {active.map(m => {
               const isRecipient = m.id === recipient?.id;
               const paid = isRecipient || monthPaid(currentMonth - 1, m.id);
@@ -1031,9 +1036,9 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
                   <Avatar name={m.name} size={34} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name}{m.isCreator ? " 👑" : ""}</div>
-                    <div style={{ fontSize: 11, color: isLate ? C.red : C.muted }}>
-                      {isRecipient ? "🎉 Bénéficiaire" : isLate ? "⚠ En retard" : `${fmt(amount)}€ à verser`}
-                    </div>
+                    <div style={{ fontSize: 11, color: isLate ? C.red : C.muted, marginTop: 2 }}>
+  {isRecipient ? "🎉 Bénéficiaire du mois" : isLate ? "⚠ En retard" : <span style={{ color: C.accent, fontWeight: 600 }}>{fmt(amount)}€</span>}
+</div>
                   </div>
 
                   {(() => { console.log('m.user_id:', m.user_id, 'myId:', myId); return null; })()}
