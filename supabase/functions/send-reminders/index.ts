@@ -33,6 +33,12 @@ serve(async (req) => {
   const results = [];
 
   for (const group of groups) {
+    // Vérifier si le cycle est terminé
+    const allMembers = group.group_members.filter((m: any) => m.active);
+    if (group.current_month > allMembers.length) {
+      console.log(`Groupe ${group.name} - cycle terminé, pas de prélèvement`);
+      continue;
+    }
     const activeMembers = group.group_members.filter((m: any) => m.active && m.user_id);
     
     for (const member of activeMembers) {

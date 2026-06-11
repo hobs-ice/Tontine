@@ -1166,15 +1166,20 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
       {tab === "governance" && (
         <div className="fade-in">
           <Card style={{ marginBottom: 12, borderColor: C.orange + "40", background: C.orangeDim }}>
-            <div style={{ fontSize: 11, color: C.orange, fontWeight: 700, marginBottom: 6 }}>ℹ Règles de gouvernance</div>
-            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.6 }}>
-              • Bannissement possible uniquement si le membre n'a pas encore reçu sa part<br />
-              • Vote ouvert à tous sauf le bénéficiaire du mois<br />
-              • Majorité simple décide · En cas d'égalité : le créateur tranche<br />
-              • Pénalité du banni redistribuée au prochain bénéficiaire<br />
-              • Vote sur maintien du pot (mensualités +) ou pot réduit
-            </div>
-          </Card>
+  <div style={{ fontSize: 12, color: C.orange, fontWeight: 700, marginBottom: 12 }}>⚖️ Règles de gouvernance</div>
+  {[
+    { icon: '🚫', text: 'Bannissement uniquement si le membre n\'a pas encore reçu sa part' },
+    { icon: '🗳️', text: 'Vote ouvert à tous sauf le bénéficiaire du mois' },
+    { icon: '⚖️', text: 'Majorité simple décide · Égalité : le créateur tranche' },
+    { icon: '💰', text: 'Pénalité du banni redistribuée au prochain bénéficiaire' },
+    { icon: '🛡️', text: `Garantie de ${group.guarantee_percent || 10}% retenue chaque mois` },
+  ].map((rule, i) => (
+    <div key={i} style={{ display: 'flex', gap: 10, marginBottom: 8, alignItems: 'flex-start' }}>
+      <span style={{ fontSize: 14, flexShrink: 0 }}>{rule.icon}</span>
+      <span style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>{rule.text}</span>
+    </div>
+  ))}
+</Card>
 
           {Object.keys(banVotes).length === 0 && lateMembers.length === 0 && (
             <Card style={{ textAlign: "center", padding: 32 }}>
