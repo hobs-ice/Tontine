@@ -108,7 +108,7 @@ function FeeNote({ amount }) {
 
 
 // ── HOME ──────────────────────────────────────────────────────
-function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadCount, onNotifications, onSettings }) {
+function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadCount, onNotifications, onSettings, session }) {
   const tontines = groups.filter(g => g.type === "tontine" && !g.archived);
   const cagnottes = groups.filter(g => g.type === "cagnotte" && !g.archived);
   const archives = groups.filter(g => g.archived);
@@ -130,7 +130,8 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
             </div>
             <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, textTransform: 'capitalize' }}>{g.name}</div>
             <div style={{ color: C.muted, fontSize: 12, marginTop: 3 }}>
-  {active.length} membre{active.length > 1 ? 's' : ''} actif{active.length > 1 ? 's' : ''}
+  {active.length} membre{active.length > 1 ? 's' : ''} actif{active.length > 1 ? 's' : ''} · 
+  {g.creator_id === session?.user?.id ? ' Vous êtes créateur' : ` Créé par ${g.members?.find(m => m.is_creator)?.name || '?'}`}
 </div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -1091,34 +1092,46 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
 {tab === "order" && (
   <div className="fade-in">
     <Card>
-      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Ordre de passage</div>
-      {members.map((m, i) => {
-        const done = i < currentMonth - 1;
-        const current = i === currentMonth - 1;
-        const banned = !m.active;
-        return (
-          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, opacity: done ? .4 : 1 }}>
-            <div style={{ width: 24, height: 24, borderRadius: "50%", background: current ? C.accent : banned ? C.red : C.subtle, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: current ? "#080b12" : C.muted, flexShrink: 0 }}>{i + 1}</div>
-            <Avatar name={m.name} size={30} />
-            <div style={{ flex: 1, fontSize: 13 }}>{m.name}{m.isCreator ? " 👑" : ""}</div>
-            {done && <Badge color={C.muted}>Passé</Badge>}
-            {current && <Badge color={C.accent}>Ce mois</Badge>}
-            {!done && !current && !banned && <span style={{ fontSize: 11, color: C.muted }}>Mois {i + 1}</span>}
-            {banned && <Badge color={C.red}>Banni</Badge>}
-            {!group.started && !m.is_creator && session?.user?.id === group.creator_id && 
-  !Object.values(payments).some(monthPayments => monthPayments[m.id]) && (
-              <button onClick={async () => {
-                if (window.confirm(`Retirer ${m.name} du groupe ?`)) {
-                  await supabase.from('group_members').delete().eq('id', m.id);
-const updatedGroup = { ...group, members: members.filter(x => x.id !== m.id) };
-onUpdate(updatedGroup);
-                }
-              }} style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: 16 }}>×</button>
-            )}
+  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>Ordre de passage</div>
+  {members.map((m, i) => {
+    const done = i < currentMonth - 1;
+    const current = i === currentMonth - 1;
+    const banned = !m.active;
+    const isLast = i === members.length - 1;
+    return (
+      <div key={m.id}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 0, opacity: done ? .4 : 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ width: 28, height: 28, borderRadius: "50%", background: current ? C.accent : done ? C.green : banned ? C.red : C.subtle, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: current ? "#080b12" : C.muted, flexShrink: 0 }}>
+              {done ? '✓' : i + 1}
+            </div>
+            {!isLast && <div style={{ width: 2, height: 24, background: done ? C.green : C.cardBorder + '80', margin: '3px 0', borderRadius: 2 }} />}
           </div>
-        );
-      })}
-    </Card>
+          <Avatar name={m.name} size={32} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{m.name}{m.is_creator ? " 👑" : ""}</div>
+            <div style={{ fontSize: 11, color: C.muted }}>
+              {done ? `Reçu au mois ${i + 1}` : current ? 'Ce mois' : `Mois ${i + 1}`}
+            </div>
+          </div>
+          {done && <Badge color={C.green}>✓ Reçu</Badge>}
+          {current && <Badge color={C.accent}>Ce mois</Badge>}
+          {banned && <Badge color={C.red}>Banni</Badge>}
+          {!done && !current && !banned && !m.is_creator && session?.user?.id === group.creator_id && 
+            !Object.values(payments).some(monthPayments => monthPayments[m.id]) && (
+            <button onClick={async () => {
+              if (window.confirm(`Retirer ${m.name} du groupe ?`)) {
+                await supabase.from('group_members').delete().eq('id', m.id);
+                onUpdate({ ...group, members: members.filter(x => x.id !== m.id) });
+              }
+            }} style={{ background: 'none', border: 'none', color: C.red, cursor: 'pointer', fontSize: 18 }}>×</button>
+          )}
+        </div>
+        {!isLast && <div style={{ height: 8 }} />}
+      </div>
+    );
+  })}
+</Card>
     {group.started && currentMonth === members.filter(m => m.active).length && (
   <Card style={{ marginTop: 12, borderColor: C.green + "50", background: C.greenDim, textAlign: "center", padding: 24 }}>
     <div style={{ fontSize: 28, marginBottom: 8 }}>🎉</div>
@@ -1878,7 +1891,7 @@ if (joinToken && session) return <JoinGroup token={joinToken} session={session} 
     const props = { group: g, onBack: () => setView("home"), onUpdate: updateGroup, session };
     return g.type === "tontine" ? <TontineDetail {...props} /> : <CagnotteDetail {...props} />;
   }
-  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} onProfile={() => setShowProfile(true)} profile={profile} onNotifications={() => setShowNotifications(true)}onSettings={() => setShowSettings(true)} unreadCount={unreadCount}/>;
+  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} onProfile={() => setShowProfile(true)} profile={profile} onNotifications={() => setShowNotifications(true)}onSettings={() => setShowSettings(true)}session={session} unreadCount={unreadCount}/>;
 }
 
 
