@@ -828,7 +828,7 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
       <button onClick={onBack} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour</button>
       <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
         <Badge color={C.accent}>🔄 Tontine</Badge>
-        <Badge color={payMethod === "stripe" ? C.purple : C.muted}>{payMethod === "stripe" ? "⚡ Stripe" : "🏦 carte"}</Badge>
+        <Badge color={payMethod === "carte" ? C.purple : C.teal}>{payMethod === "carte" ? "💳 Carte" : "⚡ SEPA"}</Badge>
       </div>
       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, marginBottom: 2 }}>{name}</div>
       <div style={{ color: C.muted, fontSize: 12, marginBottom: 20 }}>{active.length} membres · {amount}€/mois · Mois {currentMonth}/{members.length}</div>
@@ -836,37 +836,44 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
       {/* tabs */}
       <div style={{ display: "flex", gap: 4, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
         {tabs.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ background: tab === t.id ? color + "20" : "transparent", border: `1px solid ${tab === t.id ? color + "60" : C.cardBorder}`, borderRadius: 20, padding: "6px 14px", color: tab === t.id ? color : C.muted, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>{t.label}</button>
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ background: tab === t.id ? color + "20" : "transparent", border: `1px solid ${tab === t.id ? color + "60" : C.cardBorder}`, borderRadius: 20, padding: "8px 14px", color: tab === t.id ? color : C.muted, fontSize: tab === t.id ? 11 : 16, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: 'flex', alignItems: 'center', gap: 4 }}>
+  {t.label} {tab === t.id && <span style={{ fontSize: 11 }}>{t.fullLabel}</span>}
+</button>
         ))}
       </div>
 
       {/* DASHBOARD */}
       {tab === "dashboard" && (
         <div className="fade-in">
-          <Card style={{ marginBottom: 12, background: "linear-gradient(135deg,#0e1420,#1a1040)", borderColor: C.purple + "40", textAlign: "center", padding: 28 }}>
-            <div style={{ fontSize: 10, color: C.muted, letterSpacing: ".1em", textTransform: "uppercase" }}>Cagnotte du mois</div>
-            <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 52, fontWeight: 800, color: C.accent, lineHeight: 1 }}>{fmt(pot)}€</div>
-            <FeeNote amount={pot} />
-            <div style={{ background: C.subtle, borderRadius: 10, padding: "10px 14px", fontSize: 11, color: C.muted, marginTop: 8 }}>
-  🛡️ Garantie retenue ({guaranteePercent}%) : <span style={{ color: C.orange }}>{fmt(guaranteeAmount)}€</span><br/>
-  💰 Solde garantie groupe : <span style={{ color: C.green }}>{fmt(group.guarantee_balance || 0)}€</span>
-</div>
-            <div style={{ marginTop: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <Avatar name={recipient?.name || "?"} size={30} />
-              <span style={{ fontSize: 14 }}>Pour <strong>{recipient?.name}</strong> le 5 du mois</span>
-            
-            {group.creator_id === session?.user?.id && (!group.started || currentMonth > members.length) && (
-  <Btn onClick={async () => {
-    if (window.confirm('Archiver ce groupe définitivement ?')) {
-      await supabase.from('groups').update({ archived: true }).eq('id', group.id);
-      onBack();
-    }
-  }} color={C.muted} ghost style={{ width: '100%', marginTop: 12 }}>
-    📦 Archiver le groupe
-  </Btn>
-)}
-            </div>
-          </Card>
+          <Card style={{ marginBottom: 12, background: "linear-gradient(135deg,#0d0d1a,#1a0f40,#0d1a2e)", borderColor: C.accent + "30", padding: 28, position: 'relative', overflow: 'hidden' }}>
+  {/* Cercle décoratif */}
+  <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: C.accent + '08', border: `1px solid ${C.accent}15` }} />
+  <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, borderRadius: '50%', background: C.accent + '10', border: `1px solid ${C.accent}20` }} />
+  
+  <div style={{ fontSize: 10, color: C.muted, letterSpacing: ".15em", textTransform: "uppercase", marginBottom: 8 }}>Cagnotte du mois</div>
+  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 56, fontWeight: 800, color: C.accent, lineHeight: 1, marginBottom: 16 }}>{fmt(pot)}€</div>
+  
+  <FeeNote amount={pot} />
+  
+  <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: '10px 16px' }}>
+    <Avatar name={recipient?.name || "?"} size={32} />
+    <div style={{ textAlign: 'left' }}>
+      <div style={{ fontSize: 10, color: C.muted }}>Bénéficiaire ce mois</div>
+      <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{recipient?.name}</div>
+    </div>
+    <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+      <div style={{ fontSize: 10, color: C.muted }}>Reçoit le</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: C.accent }}>5 du mois</div>
+    </div>
+  </div>
+
+  {group.guarantee_percent && (
+    <div style={{ marginTop: 10, background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: '8px 14px', display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+      <span style={{ color: C.muted }}>🛡️ Garantie ({group.guarantee_percent}%)</span>
+      <span style={{ color: C.orange }}>{fmt(guaranteeAmount)}€ retenus</span>
+    </div>
+  )}
+</Card>
         
 
           
@@ -1278,11 +1285,12 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
   const allPaidThisMonth = active.every(m => monthPaid(currentMonth - 1, m.id));
 
   const tabs = [
-  { id: "dashboard", label: "📊 Tableau" },
-  { id: "payments", label: "💳 Paiements" },
-  { id: "history", label: "📈 Historique" },
-  { id: "governance", label: "⚖️ Gouvernance" },
-];
+    { id: "dashboard", label: "📊", fullLabel: "Tableau" },
+    { id: "payments", label: "💳", fullLabel: "Paiements" },
+    { id: "history", label: "📈", fullLabel: "Historique" },
+    { id: "order", label: "📋", fullLabel: "Ordre" },
+    { id: "governance", label: "⚖️", fullLabel: "Gouvernance" },
+  ];
 
 
   return (
@@ -1295,7 +1303,7 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
       <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, marginBottom: 2 }}>{name}</div>
       <div style={{ color: C.muted, fontSize: 12, marginBottom: 20 }}>{active.length} membres · Objectif {fmt(goal)}€ · {months} mois</div>
 
-      <div style={{ display: "flex", gap: 4, marginBottom: 20, overflowX: "auto", paddingBottom: 4 }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 20, overflowX: "auto", paddingBottom: 4, scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
         {tabs.map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ background: tab === t.id ? C.teal + "20" : "transparent", border: `1px solid ${tab === t.id ? C.teal + "60" : C.cardBorder}`, borderRadius: 20, padding: "6px 14px", color: tab === t.id ? C.teal : C.muted, fontSize: 11, fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>{t.label}</button>
         ))}
