@@ -129,17 +129,28 @@ serve(async (req) => {
 
               // Mettre à jour garantie + passer au mois suivant
               const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
-              await supabase.from("groups").update({
-                guarantee_balance: (fullGroup.guarantee_balance || 0) + guaranteeAmount,
-                current_month: fullGroup.current_month + 1,
-              }).eq("id", fullGroup.id);
-
+              
               await supabase.from("notifications").insert({
                 user_id: recipientMember.user_id,
                 group_id: fullGroup.id,
                 type: "payout",
                 message: `🎉 ${netAmount}€ virés sur votre compte pour ${fullGroup.name} !`,
               });
+
+              // Archiver automatiquement si cycle terminé
+const newMonth = fullGroup.current_month + 1;
+if (newMonth > activeMembers.length) {
+  await supabase.from("groups").update({
+    archived: true,
+    current_month: newMonth,
+    guarantee_balance: (fullGroup.guarantee_balance || 0) + guaranteeAmount,
+  }).eq("id", fullGroup.id);
+} else {
+  await supabase.from("groups").update({
+    current_month: newMonth,
+    guarantee_balance: (fullGroup.guarantee_balance || 0) + guaranteeAmount,
+  }).eq("id", fullGroup.id);
+}
             }
           }
         }
@@ -147,6 +158,8 @@ serve(async (req) => {
     }
   }
 
+
+  
 
   return new Response(JSON.stringify({ received: true }), {
     headers: { "Content-Type": "application/json" },
