@@ -58,9 +58,12 @@ serve(async (req) => {
           params.append("customer", profile.stripe_customer_id);
           params.append("payment_method", profile.stripe_payment_method_id);
           params.append("payment_method_types[]", "sepa_debit");
-          params.append("confirm", "true");
-          params.append("metadata[groupId]", group.id);
-          params.append("metadata[memberId]", member.id);
+params.append("confirm", "true");
+params.append("metadata[groupId]", group.id);
+params.append("metadata[memberId]", member.id);
+if (group.stripe_account_id && group.stripe_onboarding_complete) {
+  params.append("transfer_data[destination]", group.stripe_account_id);
+}
 
           const res = await fetch("https://api.stripe.com/v1/payment_intents", {
             method: "POST",
