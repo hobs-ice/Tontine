@@ -912,6 +912,48 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
 </Card>
 )}
 
+{!group.started && group.creator_id === session?.user?.id && (
+  <Card style={{ marginBottom: 12, borderColor: C.green + "40", background: C.greenDim, textAlign: "center", padding: 20 }}>
+    <div style={{ fontSize: 13, color: C.muted, marginBottom: 12 }}>
+      {active.length} membre{active.length > 1 ? 's' : ''} prêt{active.length > 1 ? 's' : ''}. Démarrez quand vous êtes au complet !
+    </div>
+
+    {!group.started && group.creator_id === session?.user?.id && group.stripe_account_id && !group.stripe_onboarding_complete && (
+  <Card style={{ marginBottom: 12, borderColor: C.teal + "40", background: '#0d1a1a' }}>
+    <div style={{ fontSize: 12, color: C.teal, fontWeight: 700, marginBottom: 8 }}>🏦 Compte groupe</div>
+    <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
+      Pour recevoir et distribuer les fonds, complétez la vérification de votre compte groupe.
+    </div>
+    <button onClick={async () => {
+      localStorage.setItem('onboarding_group_id', group.id);
+      const res = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/stripe-connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'create_onboarding_link',
+          accountId: group.stripe_account_id,
+          refreshUrl: window.location.href,
+          returnUrl: window.location.origin + '?onboarding=success',
+        })
+      });
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    }} style={{ background: C.teal, border: 'none', borderRadius: 10, padding: '10px 20px', color: '#080b12', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+      🔐 Vérifier le compte groupe
+    </button>
+  </Card>
+)}
+    <button onClick={async () => {
+      if (window.confirm(`Démarrer la tontine avec ${active.length} membre(s) ? Plus d'invitations possibles après.`)) {
+        await supabase.from('groups').update({ started: true }).eq('id', group.id);
+        onUpdate({ ...group, started: true });
+      }
+    }} style={{ background: C.green, border: 'none', borderRadius: 10, padding: '12px 32px', color: '#080b12', fontWeight: 800, cursor: 'pointer', fontSize: 14 }}>
+      🚀 Démarrer la tontine
+    </button>
+  </Card>
+)}
+
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
             <Pill label="Versements ce mois" value={`${active.filter(m => monthPaid(currentMonth - 1, m.id)).length}/${active.length}`} color={C.green} />
@@ -1075,11 +1117,15 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
     </span>
   )
 
-) : (
+) : payMethod === 'carte' && group.creator_id === myId ? (
   <span 
-    onClick={() => group.creator_id === myId ? togglePaid(m.id) : null}
-    style={{ background: C.subtle, border: `1px solid ${C.cardBorder}`, color: group.creator_id === myId ? C.text : C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: group.creator_id === myId ? 'pointer' : 'default' }}>
-    {group.creator_id === myId ? 'Confirmer' : '⏳ En attente'}
+    onClick={() => togglePaid(m.id)}
+    style={{ background: C.subtle, border: `1px solid ${C.cardBorder}`, color: C.text, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+    Confirmer
+  </span>
+) : (
+  <span style={{ background: C.subtle, border: `1px solid ${C.cardBorder}`, color: C.muted, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
+    ⏳ En attente
   </span>
 )}
 
@@ -1524,6 +1570,17 @@ const [showSettings, setShowSettings] = useState(false);
 const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      // Détecter retour onboarding Stripe
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('onboarding') === 'success') {
+  const groupId = localStorage.getItem('onboarding_group_id');
+  if (groupId) {
+    supabase.from('groups').update({ stripe_onboarding_complete: true }).eq('id', groupId).then(() => {
+      localStorage.removeItem('onboarding_group_id');
+      window.history.replaceState({}, '', window.location.pathname);
+    });
+  }
+}
       setSession(session);
       setLoading(false);
     });

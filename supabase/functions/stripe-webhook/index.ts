@@ -1,47 +1,59 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Stripe from "https://esm.sh/stripe@13.0.0?target=deno";
-
-const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-  apiVersion: "2023-10-16",
-  httpClient: Stripe.createFetchHttpClient(),
-});
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+
+async function verifyStripeSignature(payload: string, sigHeader: string, secret: string): Promise<boolean> {
+  const parts = sigHeader.split(",");
+  const timestamp = parts.find(p => p.startsWith("t="))?.split("=")[1];
+  const signature = parts.find(p => p.startsWith("v1="))?.split("=")[1];
+  if (!timestamp || !signature) return false;
+
+  const signedPayload = `${timestamp}.${payload}`;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(signedPayload));
+  const expectedSig = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
+
+  return expectedSig === signature;
+}
 
 serve(async (req) => {
   const signature = req.headers.get("stripe-signature");
   const body = await req.text();
 
-  let event;
-  try {
-    event = stripe.webhooks.constructEvent(body, signature!, WEBHOOK_SECRET!);
-  } catch (err) {
-    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+  if (!signature) {
+    return new Response("Missing signature", { status: 400 });
   }
 
+  const valid = await verifyStripeSignature(body, signature, WEBHOOK_SECRET);
+  if (!valid) {
+    return new Response("Invalid signature", { status: 400 });
+  }
+
+  const event = JSON.parse(body);
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
 
-  // Paiement réussi
   if (event.type === "payment_intent.succeeded") {
-    const paymentIntent = event.data.object as any;
+    const paymentIntent = event.data.object;
     const { groupId, memberId } = paymentIntent.metadata;
 
     if (groupId && memberId) {
-      // Récupérer le groupe et le mois actuel
       const { data: group } = await supabase
         .from("groups")
-        .select("current_month, payments")
+        .select("current_month")
         .eq("id", groupId)
         .single();
 
       if (group) {
         const currentMonth = group.current_month - 1;
-        const payments = group.payments || {};
-        if (!payments[currentMonth]) payments[currentMonth] = {};
-        payments[currentMonth][memberId] = true;
 
         await supabase.from("payments").upsert({
           group_id: groupId,
@@ -51,7 +63,6 @@ serve(async (req) => {
           paid_at: new Date().toISOString(),
         }, { onConflict: "group_id,member_id,month" });
 
-        // Notification
         const { data: member } = await supabase
           .from("group_members")
           .select("user_id, name")
@@ -66,12 +77,78 @@ serve(async (req) => {
             message: `✅ Prélèvement de ${paymentIntent.amount / 100}€ confirmé !`,
           });
         }
+
+        // Vérifier si tous les membres ont payé ce mois
+        const { data: fullGroup } = await supabase
+          .from("groups")
+          .select("*, group_members(*)")
+          .eq("id", groupId)
+          .single();
+
+        if (fullGroup) {
+          const activeMembers = fullGroup.group_members.filter((m: any) => m.active);
+          const { data: monthPayments } = await supabase
+            .from("payments")
+            .select("member_id, paid")
+            .eq("group_id", groupId)
+            .eq("month", currentMonth);
+
+          const recipientMember = activeMembers[fullGroup.current_month - 1];
+          const paidMemberIds = new Set((monthPayments || []).filter((p: any) => p.paid).map((p: any) => p.member_id));
+          
+          // Le bénéficiaire est considéré payé automatiquement
+          const allPaid = activeMembers.every((m: any) => 
+            m.id === recipientMember?.id || paidMemberIds.has(m.id)
+          );
+
+          if (allPaid && recipientMember?.user_id) {
+            const { data: recipientProfile } = await supabase
+              .from("profiles")
+              .select("iban, name")
+              .eq("id", recipientMember.user_id)
+              .single();
+
+            if (recipientProfile?.iban) {
+              const guaranteePercent = fullGroup.guarantee_percent || 10;
+              const pot = fullGroup.amount * activeMembers.length;
+              const netAmount = Math.round(pot * (1 - guaranteePercent / 100) * 0.96 * 100) / 100;
+
+              // Appeler stripe-connect pour le virement
+              await fetch(`${SUPABASE_URL}/functions/v1/stripe-connect`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  action: "send_to_beneficiary",
+                  groupId: fullGroup.id,
+                  amount: netAmount,
+                  recipientIban: recipientProfile.iban,
+                  recipientName: recipientProfile.name || recipientMember.name,
+                  recipientEmail: "",
+                })
+              });
+
+              // Mettre à jour garantie + passer au mois suivant
+              const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
+              await supabase.from("groups").update({
+                guarantee_balance: (fullGroup.guarantee_balance || 0) + guaranteeAmount,
+                current_month: fullGroup.current_month + 1,
+              }).eq("id", fullGroup.id);
+
+              await supabase.from("notifications").insert({
+                user_id: recipientMember.user_id,
+                group_id: fullGroup.id,
+                type: "payout",
+                message: `🎉 ${netAmount}€ virés sur votre compte pour ${fullGroup.name} !`,
+              });
+            }
+          }
+        }
       }
     }
   }
+
 
   return new Response(JSON.stringify({ received: true }), {
     headers: { "Content-Type": "application/json" },
   });
 });
-
