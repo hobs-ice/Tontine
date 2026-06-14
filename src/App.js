@@ -1653,7 +1653,7 @@ const checkInvitations = async () => {
     .select('*, groups(*)')
     .eq('email', session.user.email)
     .eq('status', 'pending');
-  
+ 
   if (data && data.length > 0) {
     setPendingInvites(data);
   }
