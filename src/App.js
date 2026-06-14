@@ -923,7 +923,7 @@ const netAmount = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
   <Card style={{ marginBottom: 12, borderColor: C.teal + "40", background: '#0d1a1a' }}>
     <div style={{ fontSize: 12, color: C.teal, fontWeight: 700, marginBottom: 8 }}>🏦 Compte groupe</div>
     <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
-      Pour recevoir et distribuer les fonds, complétez la vérification de votre compte groupe.
+      Chaque groupe a son propre compte bancaire sécurisé. Cette vérification unique permet de recevoir et distribuer les fonds de ce groupe en toute sécurité. Elle prend moins de 2 minutes !
     </div>
     <button onClick={async () => {
       localStorage.setItem('onboarding_group_id', group.id);

@@ -113,19 +113,33 @@ serve(async (req) => {
               const pot = fullGroup.amount * activeMembers.length;
               const netAmount = Math.round(pot * (1 - guaranteePercent / 100) * 0.96 * 100) / 100;
 
-              // Appeler stripe-connect pour le virement
-              await fetch(`${SUPABASE_URL}/functions/v1/stripe-connect`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  action: "send_to_beneficiary",
-                  groupId: fullGroup.id,
-                  amount: netAmount,
-                  recipientIban: recipientProfile.iban,
-                  recipientName: recipientProfile.name || recipientMember.name,
-                  recipientEmail: "",
-                })
-              });
+              // Virement automatique vers le bénéficiaire
+if (recipientProfile?.iban && fullGroup.stripe_account_id) {
+  const guaranteePercent = fullGroup.guarantee_percent || 10;
+  const pot = fullGroup.amount * activeMembers.length;
+  const netAmount = Math.round(pot * (1 - guaranteePercent / 100) * 0.96 * 100) / 100;
+
+  // Créer un payout depuis le compte Connect du groupe
+  const payoutParams = new URLSearchParams();
+  payoutParams.append("amount", String(Math.round(netAmount * 100)));
+  payoutParams.append("currency", "eur");
+  payoutParams.append("method", "instant");
+  payoutParams.append("metadata[groupId]", fullGroup.id);
+  payoutParams.append("metadata[recipientName]", recipientProfile.name || "");
+
+  const payoutRes = await fetch("https://api.stripe.com/v1/payouts", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${STRIPE_SECRET_KEY}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Stripe-Account": fullGroup.stripe_account_id,
+    },
+    body: payoutParams.toString(),
+  });
+
+  const payout = await payoutRes.json();
+  console.log("PAYOUT:", JSON.stringify(payout));
+}
 
               // Mettre à jour garantie + passer au mois suivant
               const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
