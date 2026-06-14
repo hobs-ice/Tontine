@@ -740,6 +740,7 @@ function TontineDetail({ group, onBack, onUpdate, session }) {
   const pot = amount * active.length;
   const guaranteePercent = group.guarantee_percent || 10;
 const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
+const netAmount = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
 
   const recipient = active[currentMonth - 1] || active[0];
   const monthPaid = (mi, pi) => payments?.[mi]?.[pi] ?? false;
@@ -1181,6 +1182,36 @@ const guaranteeAmount = Math.round(pot * (guaranteePercent / 100) * 100) / 100;
     );
   })}
 </Card>
+{allPaid && group.creator_id === session?.user?.id && group.stripe_account_id && (
+  <Card style={{ marginBottom: 12, borderColor: C.green + "40", background: C.greenDim, textAlign: "center", padding: 20 }}>
+    <div style={{ fontSize: 13, color: C.green, fontWeight: 700, marginBottom: 8 }}>✅ Tous les membres ont payé !</div>
+    <div style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
+      Distribuez le pot à <strong style={{ color: C.text }}>{recipient?.name}</strong>
+    </div>
+    <button onClick={async () => {
+      if (window.confirm(`Virer ${fmt(netAmount)}€ à ${recipient?.name} ?`)) {
+        const res = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/stripe-connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'send_to_beneficiary',
+            groupId: group.id,
+            accountId: group.stripe_account_id,
+            amount: netAmount,
+            recipientIban: recipient?.iban || '',
+            recipientName: recipient?.name || '',
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert(`🎉 ${fmt(netAmount)}€ distribués à ${recipient?.name} !`);
+        }
+      }
+    }} style={{ background: C.green, border: 'none', borderRadius: 10, padding: '12px 32px', color: '#080b12', fontWeight: 800, cursor: 'pointer', fontSize: 14 }}>
+      💸 Distribuer {fmt(netAmount)}€ à {recipient?.name}
+    </button>
+  </Card>
+)}
     {group.started && currentMonth === members.filter(m => m.active).length && (
   <Card style={{ marginTop: 12, borderColor: C.green + "50", background: C.greenDim, textAlign: "center", padding: 24 }}>
     <div style={{ fontSize: 28, marginBottom: 8 }}>🎉</div>
@@ -1684,6 +1715,7 @@ const profilesMap = {};
   ...m,
   has_iban: !!(profilesMap[m.user_id]?.iban),
   profileName: profilesMap[m.user_id]?.name,
+  iban: profilesMap[m.user_id]?.iban || null,
 })),
         payments: paymentsObj,
         banVotes: g.ban_votes || {},
