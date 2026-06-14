@@ -945,13 +945,20 @@ const netAmount = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
   </Card>
 )}
     <button onClick={async () => {
-      if (window.confirm(`Démarrer la tontine avec ${active.length} membre(s) ? Plus d'invitations possibles après.`)) {
+  if (active.length < 2) return;
+  if (window.confirm(`Démarrer la tontine avec ${active.length} membre(s) ? Plus d'invitations possibles après.`)) {
         await supabase.from('groups').update({ started: true }).eq('id', group.id);
         onUpdate({ ...group, started: true });
       }
-    }} style={{ background: C.green, border: 'none', borderRadius: 10, padding: '12px 32px', color: '#080b12', fontWeight: 800, cursor: 'pointer', fontSize: 14 }}>
+    }} disabled={active.length < 2}
+style={{ background: active.length < 2 ? C.subtle : C.green, border: 'none', borderRadius: 10, padding: '12px 32px', color: active.length < 2 ? C.muted : '#080b12', fontWeight: 800, cursor: active.length < 2 ? 'not-allowed' : 'pointer', fontSize: 14, opacity: active.length < 2 ? 0.5 : 1 }}>
       🚀 Démarrer la tontine
     </button>
+    {active.length < 2 && (
+  <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>
+    Invitez au moins 1 membre pour démarrer !
+  </div>
+)}
   </Card>
 )}
 
