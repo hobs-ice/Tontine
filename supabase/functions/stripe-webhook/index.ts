@@ -139,7 +139,7 @@ if (recipientProfile?.iban && fullGroup.stripe_account_id) {
   });
 
   const payout = await payoutRes.json();
-  console.log("PAYOUT:", JSON.stringify(payout));
+  
 }
 
               // Mettre à jour garantie + passer au mois suivant

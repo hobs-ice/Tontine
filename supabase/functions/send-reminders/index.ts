@@ -99,7 +99,7 @@ if (group.stripe_account_id && group.stripe_onboarding_complete) {
       }
     }
   }
-console.log("RESULTS:", JSON.stringify(results));
+
   
 return new Response(JSON.stringify({ success: true, results }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },

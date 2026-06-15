@@ -746,8 +746,8 @@ const netAmount = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
   const monthPaid = (mi, pi) => payments?.[mi]?.[pi] ?? false;
   const allPaid = active.every(m => monthPaid(currentMonth - 1, m.id));
   const myId = session?.user?.id;
-  console.log('myId:', myId, 'creator_id:', group.creator_id);
-  console.log('members:', members.map(m => ({ name: m.name , user_id: m.user_id })));
+  
+  
 
 
 
@@ -1095,7 +1095,7 @@ style={{ background: active.length < 2 ? C.subtle : C.green, border: 'none', bor
 </div>
                   </div>
 
-                  {(() => { console.log('m.user_id:', m.user_id, 'myId:', myId); return null; })()}
+                  
                  {paid ? (
   <span style={{ background: C.greenDim, border: `1px solid ${C.green}`, color: C.green, borderRadius: 8, padding: "5px 12px", fontSize: 11, fontWeight: 700 }}>
     ✓ Payé
@@ -1662,12 +1662,12 @@ const checkInvitations = async () => {
 
  const loadGroups = async () => {
   if (!session?.user?.id) return;
-  console.log('Loading groups for user:', session.user.id);
+  
   const { data: memberData } = await supabase
     .from('group_members')
     .select('group_id')
     .eq('user_id', session.user.id);
-  console.log('Member groups:', memberData);
+  
   // Groupes créés par l'utilisateur
   const { data: myGroups } = await supabase
     .from('groups')
@@ -1678,14 +1678,14 @@ const checkInvitations = async () => {
 
   // Groupes où l'utilisateur est membre via invitation acceptée
   const groupIds = memberData?.map(m => m.group_id) || [];
-console.log('Group IDs:', groupIds);
+
 
 const { data: memberGroups } = groupIds.length > 0 ? await supabase
   .from('groups')
   .select(`*, group_members(*), payments(*)`)
   .in('id', groupIds) : { data: [] };
 
-console.log('Member groups loaded:', memberGroups);
+
 
   
 
