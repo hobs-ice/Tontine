@@ -92,6 +92,7 @@ export default function Profile({ session, onBack, isOnboarding = false }) {
         stripe_customer_id: newStripeCustomerId || null,
         stripe_payment_method_id: stripePaymentMethodId || null,
         address,
+        email: session.user.email,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
 

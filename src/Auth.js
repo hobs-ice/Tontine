@@ -39,9 +39,10 @@ const [showLegal, setShowLegal] = useState(null);
     const { data: userData } = await supabase.auth.getUser();
     if (userData?.user) {
       await supabase.from('profiles').upsert({
-        id: userData.user.id,
-        iban: iban.trim(),
-      });
+  id: userData.user.id,
+  iban: iban.trim(),
+  email: userData.user.email,
+});
     }
   }
 }

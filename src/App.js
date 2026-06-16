@@ -4,6 +4,7 @@ import Auth from './Auth';
 import Profile from './Profile';
 import Settings from './Settings';
 import Onboarding from './Onboarding';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
@@ -1272,6 +1273,46 @@ style={{ background: active.length < 2 ? C.subtle : C.green, border: 'none', bor
             </Card>
           )}
 
+          {members.filter(m => !m.active && m.user_id).map(banned => (
+  <Card key={banned.id} style={{ marginBottom: 12, borderColor: C.red + "40", background: C.redDim }}>
+    <div style={{ fontSize: 12, color: C.red, fontWeight: 700, marginBottom: 8 }}>🚫 {banned.name} — Banni</div>
+    {group.creator_id === session?.user?.id && (
+      <button onClick={async () => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, iban, address, email')
+          .eq('id', banned.user_id)
+          .single();
+
+        const amount = group.amount * (group.currentMonth - 1);
+        const date = new Date().toLocaleDateString('fr-FR');
+
+        const pdfBytes = await generateDebtPDF({
+          debtorName: profile?.name || banned.name,
+          debtorEmail: profile?.email || '',
+          debtorIban: profile?.iban || '',
+          debtorAddress: profile?.address || '',
+          amount,
+          groupName: group.name,
+          date,
+          members: active.map(m => ({ name: m.name, email: m.profileName || '' })),
+        });
+
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reconnaissance-dette-${banned.name}-${date}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }} style={{ background: C.red, border: 'none', borderRadius: 8, padding: '8px 16px', color: 'white', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+        📄 Générer reconnaissance de dette
+      </button>
+    )}
+  </Card>
+))}
+
+
           {Object.keys(banVotes).map(candidateIdStr => {
             const candidateId = candidateIdStr;
             const candidate = members.find(m => m.id === candidateId);
@@ -1591,6 +1632,87 @@ function CagnotteDetail({ group, onBack, onUpdate }) {
 }
 
 // ── ROOT ──────────────────────────────────────────────────────
+async function generateDebtPDF({ debtorName, debtorEmail, debtorIban, debtorAddress, amount, groupName, date, members }) {
+  const pdfDoc = await PDFDocument.create();
+  const page = pdfDoc.addPage([595, 842]); // A4
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const { width, height } = page.getSize();
+
+  // Header
+  page.drawText('RECONNAISSANCE DE DETTE', {
+    x: 50, y: height - 80,
+    size: 20, font: fontBold, color: rgb(0.94, 0.71, 0.16),
+  });
+
+  page.drawText('Document généré automatiquement par Tontine App', {
+    x: 50, y: height - 105,
+    size: 10, font, color: rgb(0.4, 0.4, 0.4),
+  });
+
+  // Ligne séparatrice
+  page.drawLine({
+    start: { x: 50, y: height - 120 },
+    end: { x: width - 50, y: height - 120 },
+    thickness: 1, color: rgb(0.9, 0.9, 0.9),
+  });
+
+  // Date et groupe
+  page.drawText(`Date : ${date}`, { x: 50, y: height - 150, size: 11, font, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText(`Groupe : ${groupName}`, { x: 50, y: height - 170, size: 11, font, color: rgb(0.2, 0.2, 0.2) });
+
+  // Débiteur
+  page.drawText('DÉBITEUR', { x: 50, y: height - 210, size: 13, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText(`Nom : ${debtorName}`, { x: 50, y: height - 235, size: 11, font, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText(`Email : ${debtorEmail}`, { x: 50, y: height - 255, size: 11, font, color: rgb(0.2, 0.2, 0.2) });
+  page.drawText(`IBAN : ${debtorIban}`, { x: 50, y: height - 275, size: 11, font, color: rgb(0.2, 0.2, 0.2) });
+  if (debtorAddress) {
+    page.drawText(`Adresse : ${debtorAddress}`, { x: 50, y: height - 295, size: 11, font, color: rgb(0.2, 0.2, 0.2) });
+  }
+
+  // Montant dû
+  page.drawText('MONTANT DÛ', { x: 50, y: height - 340, size: 13, font: fontBold, color: rgb(0.94, 0.27, 0.27) });
+  page.drawText(`${amount}€`, { x: 50, y: height - 365, size: 28, font: fontBold, color: rgb(0.94, 0.27, 0.27) });
+
+  // Texte légal
+  const legalText = `Je soussigné(e) ${debtorName}, titulaire du compte IBAN ${debtorIban}, reconnais devoir la somme de ${amount}€ au groupe de tontine "${groupName}". Cette dette correspond aux mensualités impayées. Je m'engage à rembourser cette somme dans les meilleurs délais.`;
+
+  const words = legalText.split(' ');
+  let line = '';
+  let y = height - 430;
+  for (const word of words) {
+    const testLine = line + word + ' ';
+    if (testLine.length > 80) {
+      page.drawText(line, { x: 50, y, size: 10, font, color: rgb(0.3, 0.3, 0.3) });
+      line = word + ' ';
+      y -= 18;
+    } else {
+      line = testLine;
+    }
+  }
+  page.drawText(line, { x: 50, y, size: 10, font, color: rgb(0.3, 0.3, 0.3) });
+
+  // Membres informés
+  y -= 50;
+  page.drawText('MEMBRES INFORMÉS', { x: 50, y, size: 13, font: fontBold, color: rgb(0.2, 0.2, 0.2) });
+  y -= 20;
+  for (const m of members) {
+    page.drawText(`• ${m.name} (${m.email || 'email non renseigné'})`, { x: 50, y, size: 10, font, color: rgb(0.4, 0.4, 0.4) });
+    y -= 16;
+  }
+
+  // Footer
+  page.drawText('Ce document a valeur de reconnaissance de dette au sens de l\'article 1326 du Code Civil français.', {
+    x: 50, y: 60, size: 8, font, color: rgb(0.5, 0.5, 0.5),
+  });
+  page.drawText(`Généré le ${date} par Tontine App — tontineapp.com`, {
+    x: 50, y: 45, size: 8, font, color: rgb(0.5, 0.5, 0.5),
+  });
+
+  const pdfBytes = await pdfDoc.save();
+  return pdfBytes;
+}
+
 export default function App() {
   const [view, setView] = useState("home");
   const [groups, setGroups] = useState([]);
