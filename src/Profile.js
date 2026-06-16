@@ -55,6 +55,40 @@ export default function Profile({ session, onBack, isOnboarding = false }) {
 
   const saveProfile = async () => {
     setSaving(true);
+    // Vérifier doublon IBAN
+if (iban && iban !== '') {
+  const { data: existingIban } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('iban', iban)
+    .neq('id', session.user.id)
+    .single();
+  
+  if (existingIban) {
+    setMessage('❌ Cet IBAN est déjà utilisé par un autre compte !');
+    setSaving(false);
+    return;
+  }
+}
+
+// Notifier les créateurs si changement d'IBAN
+if (iban && iban !== '' && stripeCustomerId) {
+  const { data: memberGroups } = await supabase
+    .from('group_members')
+    .select('group_id, groups(creator_id, name)')
+    .eq('user_id', session.user.id);
+
+  for (const mg of memberGroups || []) {
+    if (mg.groups?.creator_id && mg.groups.creator_id !== session.user.id) {
+      await supabase.from('notifications').insert({
+        user_id: mg.groups.creator_id,
+        group_id: mg.group_id,
+        type: 'alert',
+        message: `⚠️ ${name || 'Un membre'} a changé son IBAN dans le groupe ${mg.groups.name}`,
+      });
+    }
+  }
+}
     let newStripeCustomerId = stripeCustomerId;
     let stripePaymentMethodId = null;
 
