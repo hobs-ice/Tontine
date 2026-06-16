@@ -16,6 +16,7 @@ export default function Profile({ session, onBack, isOnboarding = false }) {
   const [message, setMessage] = useState('');
   const [iban, setIban] = useState('');
   const [stripeCustomerId, setStripeCustomerId] = useState(null);
+  const [address, setAddress] = useState('');
 
   useEffect(() => {
     if (session?.user?.id) loadProfile();
@@ -33,6 +34,7 @@ export default function Profile({ session, onBack, isOnboarding = false }) {
       setPhone(data.phone || '');
       setIban(data.iban || '');
       setStripeCustomerId(data.stripe_customer_id || null);
+      setAddress(data.address || '');
       setAvatarUrl(data.avatar_url || null);
     }
   };
@@ -89,6 +91,7 @@ export default function Profile({ session, onBack, isOnboarding = false }) {
         avatar_url: avatarUrl,
         stripe_customer_id: newStripeCustomerId || null,
         stripe_payment_method_id: stripePaymentMethodId || null,
+        address,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
 
@@ -153,7 +156,17 @@ export default function Profile({ session, onBack, isOnboarding = false }) {
         <input value={iban} onChange={e => setIban(e.target.value.toUpperCase())}
           placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
           style={{ width: '100%', background: C.subtle, border: 'none', borderRadius: 8, padding: '10px 12px', color: C.text, outline: 'none', fontSize: 13, letterSpacing: '.05em' }} />
+      
+      <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: '.06em', marginBottom: 6, marginTop: 16 }}>ADRESSE</div>
+<input value={address} onChange={e => setAddress(e.target.value)}
+  placeholder="123 rue de la Paix, 75001 Paris"
+  style={{ width: '100%', background: C.subtle, border: 'none', borderRadius: 8, padding: '10px 12px', color: C.text, outline: 'none', fontSize: 13 }} />
+      
+      
       </div>
+
+
+      
 
        {message && (
         <div style={{ background: '#0a1a0a', border: '1px solid #10b98140', borderRadius: 10, padding: '10px 14px', fontSize: 12, color: C.green, marginBottom: 12 }}>
