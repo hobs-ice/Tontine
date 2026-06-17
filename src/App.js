@@ -5,6 +5,7 @@ import Profile from './Profile';
 import Settings from './Settings';
 import Onboarding from './Onboarding';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import ReactMarkdown from 'react-markdown';
 
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements, PaymentRequestButtonElement } from '@stripe/react-stripe-js';
@@ -735,6 +736,7 @@ function InviteAccept({ invites, session, onDone }) {
 // ── TONTINE DETAIL ────────────────────────────────────────────
 function TontineDetail({ group, onBack, onUpdate, session }) {
   const [tab, setTab] = useState("dashboard");
+  const [showChat, setShowChat] = useState(false);
   const [showStripePayment, setShowStripePayment] = useState(null);
   const { name, amount, members, currentMonth, payments, banVotes, payMethod } = group;
   const active = members.filter(m => m.active);
@@ -837,6 +839,8 @@ const netAmount = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
       <div style={{ color: C.muted, fontSize: 12, marginBottom: 20 }}>
   {active.length} membres · {amount}€/mois · Mois {currentMonth}/{members.length} · 
   {group.creator_id === session?.user?.id ? ' 👑 Vous êtes créateur' : ` Créé par ${members.find(m => m.is_creator)?.name || '?'}`}
+
+
 </div>
 
       {/* tabs */}
@@ -1372,6 +1376,13 @@ style={{ background: active.length < 2 ? C.subtle : C.green, border: 'none', bor
           })}
         </div>
       )}
+    {/* Bouton flottant chat */}
+      <button onClick={() => setShowChat(!showChat)}
+        style={{ position: 'fixed', bottom: 24, right: 16, width: 52, height: 52, borderRadius: '50%', background: C.accent, border: 'none', color: '#080b12', fontSize: 24, cursor: 'pointer', zIndex: 999, boxShadow: '0 4px 16px rgba(240,180,41,0.4)' }}>
+        {showChat ? '×' : '💬'}
+      </button>
+
+      {showChat && <TontineChat group={group} session={session} onClose={() => setShowChat(false)} />}
     </div>
   );
 }
@@ -1711,6 +1722,105 @@ async function generateDebtPDF({ debtorName, debtorEmail, debtorIban, debtorAddr
 
   const pdfBytes = await pdfDoc.save();
   return pdfBytes;
+}
+
+function TontineChat({ group, session, onClose }) {
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: `Bonjour ! Je suis votre assistant Tontine 🫂 Je connais votre groupe "${group.name}". Comment puis-je vous aider ?` }
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const activeMembers = group.members.filter(m => m.active);
+  const recipient = activeMembers[group.currentMonth - 1];
+  const pot = group.amount * activeMembers.length;
+
+  const systemPrompt = `Tu es l'assistant IA de l'app Tontine. Tu aides les membres à comprendre leur tontine.
+
+Contexte du groupe:
+- Nom: ${group.name}
+- Type: ${group.type}
+- Montant mensuel: ${group.amount}€
+- Membres actifs: ${activeMembers.length}
+- Mois en cours: ${group.currentMonth}/${activeMembers.length}
+- Pot du mois: ${pot}€
+- Bénéficiaire ce mois: ${recipient?.name || 'Non défini'}
+- Garantie: ${group.guarantee_percent || 10}%
+
+Réponds en français, de façon concise et amicale. Si on te demande des informations que tu n'as pas, dis-le honnêtement.`;
+
+  const sendMessage = async () => {
+    console.log('Sending to tontine-chat...');
+
+    if (!input.trim() || loading) return;
+    const userMsg = { role: 'user', content: input };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setInput('');
+    setLoading(true);
+    
+
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+const response = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/tontine-chat', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentSession?.access_token}`,
+        },
+        body: JSON.stringify({
+          messages: newMessages,
+          systemPrompt,
+        })
+      });
+      const data = await response.json();
+      const reply = data.reply || 'Désolé, je n\'ai pas pu répondre.';
+      setMessages([...newMessages, { role: 'assistant', content: reply }]);
+    } catch {
+      setMessages([...newMessages, { role: 'assistant', content: '❌ Erreur de connexion.' }]);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ position: 'fixed', bottom: 80, right: 16, width: 320, maxHeight: 480, background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 18, display: 'flex', flexDirection: 'column', zIndex: 1000, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+      {/* Header */}
+      <div style={{ padding: '14px 16px', borderBottom: `1px solid ${C.cardBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14 }}>🤖 Assistant Tontine</div>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 18 }}>×</button>
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {messages.map((m, i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div style={{ maxWidth: '80%', background: m.role === 'user' ? C.accent : C.subtle, color: m.role === 'user' ? '#080b12' : C.text, borderRadius: 12, padding: '8px 12px', fontSize: 12, lineHeight: 1.5 }}>
+              {m.role === 'assistant' ? <ReactMarkdown>{m.content}</ReactMarkdown> : m.content}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+            <div style={{ background: C.subtle, borderRadius: 12, padding: '8px 12px', fontSize: 12, color: C.muted }}>
+              ⏳ ...
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div style={{ padding: 12, borderTop: `1px solid ${C.cardBorder}`, display: 'flex', gap: 8 }}>
+        <input value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && sendMessage()}
+          placeholder="Posez votre question..."
+          style={{ flex: 1, background: C.subtle, border: 'none', borderRadius: 8, padding: '8px 12px', color: C.text, outline: 'none', fontSize: 12 }} />
+        <button onClick={sendMessage} disabled={loading}
+          style={{ background: C.accent, border: 'none', borderRadius: 8, padding: '8px 12px', color: '#080b12', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+          ➤
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function App() {
