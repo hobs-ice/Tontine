@@ -734,6 +734,73 @@ function InviteAccept({ invites, session, onDone }) {
 
 
 // ── TONTINE DETAIL ────────────────────────────────────────────
+function RiskAnalysis({ group, members, payments }) {
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const analyze = async () => {
+    setLoading(true);
+    const activeMembers = members.filter(m => m.active);
+    const memberStats = activeMembers.map(m => {
+      const paidMonths = Object.entries(payments).filter(([, monthPayments]) => monthPayments[m.id]).length;
+      const totalMonths = group.currentMonth - 1;
+      const missedPayments = totalMonths - paidMonths;
+      const hasReceivedPot = members.indexOf(m) < group.currentMonth - 1;
+      return { name: m.name, paidMonths, missedPayments, totalMonths, hasReceivedPot };
+    });
+
+    const prompt = `Analyse ces données de tontine et donne un score de risque pour chaque membre.
+Groupe: ${group.name}, ${group.amount}€/mois, Mois ${group.currentMonth}
+Membres:
+${memberStats.map(m => `- ${m.name}: ${m.paidMonths}/${m.totalMonths} mois payés, ${m.missedPayments} retard(s), pot reçu: ${m.hasReceivedPot ? 'OUI' : 'NON'}`).join('\n')}
+Réponds UNIQUEMENT en JSON: {"members":[{"name":"...","risk":"Faible|Moyen|Élevé","emoji":"🟢|🟡|🔴","reason":"..."}],"summary":"..."}`;
+
+    try {
+      const res = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/tontine-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: prompt }],
+          systemPrompt: 'Réponds UNIQUEMENT en JSON valide, sans texte avant ou après.',
+        })
+      });
+      const data = await res.json();
+      const clean = data.reply.replace(/```json|```/g, '').trim();
+      setAnalysis(JSON.parse(clean));
+    } catch {
+      setAnalysis({ error: true });
+    }
+    setLoading(false);
+  };
+
+  return (
+    <Card style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14 }}>🔍 Analyse des risques</div>
+        <button onClick={analyze} disabled={loading}
+          style={{ background: C.purple, border: 'none', borderRadius: 8, padding: '6px 14px', color: 'white', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, opacity: loading ? 0.6 : 1 }}>
+          {loading ? '⏳ Analyse...' : '🔍 Analyser'}
+        </button>
+      </div>
+      {analysis?.error && <div style={{ fontSize: 12, color: C.red }}>❌ Erreur lors de l'analyse</div>}
+      {analysis && !analysis.error && (
+        <div>
+          {analysis.members?.map((m, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, padding: '8px 10px', background: C.subtle, borderRadius: 10 }}>
+              <span style={{ fontSize: 20 }}>{m.emoji}</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13 }}>{m.name} — <span style={{ color: m.risk === 'Élevé' ? C.red : m.risk === 'Moyen' ? C.orange : C.green }}>{m.risk}</span></div>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{m.reason}</div>
+              </div>
+            </div>
+          ))}
+          {analysis.summary && <div style={{ fontSize: 11, color: C.muted, marginTop: 8, padding: '8px 10px', background: C.cardBorder, borderRadius: 8 }}>📋 {analysis.summary}</div>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function TontineDetail({ group, onBack, onUpdate, session }) {
   const [tab, setTab] = useState("dashboard");
   const [showChat, setShowChat] = useState(false);
@@ -1254,6 +1321,9 @@ style={{ background: active.length < 2 ? C.subtle : C.green, border: 'none', bor
       {/* GOVERNANCE */}
       {tab === "governance" && (
         <div className="fade-in">
+        {group.creator_id === session?.user?.id && (
+  <RiskAnalysis group={group} members={members} payments={payments} />
+)}
           <Card style={{ marginBottom: 12, borderColor: C.orange + "40", background: C.orangeDim }}>
   <div style={{ fontSize: 12, color: C.orange, fontWeight: 700, marginBottom: 12 }}>⚖️ Règles de gouvernance</div>
   {[
