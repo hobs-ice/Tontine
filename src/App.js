@@ -263,7 +263,7 @@ function CreateView({ onCreate, onBack }) {
   const [goal, setGoal] = useState("");
   const [months, setMonths] = useState("");
   const [payMethod, setPayMethod] = useState("stripe");
-  const [iban, setIban] = useState('');
+  const [iban] = useState('');
   const [guaranteePercent, setGuaranteePercent] = useState(10);
   const [isPublic, setIsPublic] = useState(false);
 const [description, setDescription] = useState('');
