@@ -110,10 +110,11 @@ function FeeNote({ amount }) {
 
 
 // ── HOME ──────────────────────────────────────────────────────
-function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadCount, onNotifications, onSettings, session }) {
+function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadCount, onNotifications, onSettings, session, onDiscover }) {
   const tontines = groups.filter(g => g.type === "tontine" && !g.archived);
   const cagnottes = groups.filter(g => g.type === "cagnotte" && !g.archived);
   const archives = groups.filter(g => g.archived);
+  const [showDiscover, setShowDiscover] = useState(false);
 
   function GroupCard({ g }) {
     const active = g.members.filter(m => m.active);
@@ -164,6 +165,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
       
       {/* HEADER FIXE */}
       <div style={{ position: 'sticky', top: 0, background: C.bg, zIndex: 100, borderBottom: `1px solid ${C.cardBorder}`, paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        <button onClick={onDiscover} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 20 }}>🌍</button>
         {/* NAVBAR */}
         <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800, letterSpacing: "-.02em" }}>🫂 Tontine</div>
@@ -176,6 +178,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
               </span>
             )}
           </button>
+          <button onClick={onDiscover} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 20 }}>🌍</button>
           <button onClick={onSettings} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>⚙️</button>
           <button onClick={onProfile} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             {profile?.avatar_url ? (
@@ -184,6 +187,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
               <div style={{ width: 32, height: 32, borderRadius: '50%', background: C.subtle, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, border: `2px solid ${C.cardBorder}` }}>👤</div>
             )}
           </button>
+          
         </div>
         </div>
       </div>
@@ -259,6 +263,8 @@ function CreateView({ onCreate, onBack }) {
   const [payMethod, setPayMethod] = useState("stripe");
   const [iban, setIban] = useState('');
   const [guaranteePercent, setGuaranteePercent] = useState(10);
+  const [isPublic, setIsPublic] = useState(false);
+const [description, setDescription] = useState('');
   
  
   const [members] = useState([{ id: 0, name: "Créateur", isCreator: true, active: true, joined: 1 }]);
@@ -273,7 +279,9 @@ function CreateView({ onCreate, onBack }) {
   const canCreate = canNext1 && Number(maxMembers) >= 2;
 
   const handle = () => {
-  const base = { type, name, payMethod, iban, guaranteePercent, maxMembers: Number(maxMembers), started: false, currentMonth: 1, payments: {}, banVotes: {}, banCandidates: [] };
+    
+  const base = { type, name, payMethod, iban, guaranteePercent, maxMembers: Number(maxMembers), isPublic, description, started: false, currentMonth: 1, payments: {}, banVotes: {}, banCandidates: [] };
+  
   
   if (type === "tontine") onCreate({ ...base, amount: Number(amount), members });
   else onCreate({ ...base, goal: Number(goal), months: Number(months), members, unlockVotes: {}, redistributeVotes: {}, refundRequests: [] });
@@ -338,6 +346,28 @@ function CreateView({ onCreate, onBack }) {
 
       {/* paiement */}
       <Card style={{ marginBottom: 10 }}>
+        <Card style={{ marginBottom: 10 }}>
+  <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 8 }}>VISIBILITÉ</div>
+  <div style={{ display: 'flex', gap: 8 }}>
+    {[['private', '🔒 Privée', 'Sur invitation uniquement'], ['public', '🌍 Publique', 'Visible par tous']].map(([val, label, desc]) => (
+      <div key={val} onClick={() => setIsPublic(val === 'public')}
+        style={{ flex: 1, padding: '10px', borderRadius: 10, cursor: 'pointer', border: `2px solid ${(isPublic ? val === 'public' : val === 'private') ? C.accent : C.cardBorder}`, background: (isPublic ? val === 'public' : val === 'private') ? C.accentDim : 'transparent' }}>
+        <div style={{ fontWeight: 700, fontSize: 13 }}>{label}</div>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{desc}</div>
+      </div>
+    ))}
+  </div>
+</Card>
+
+{isPublic && (
+  <Card style={{ marginBottom: 10 }}>
+    <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 6 }}>DESCRIPTION (optionnel)</div>
+    <textarea value={description} onChange={e => setDescription(e.target.value)}
+      placeholder="Décrivez votre tontine pour attirer les bons membres..."
+      rows={3}
+      style={{ width: '100%', background: C.subtle, border: 'none', borderRadius: 8, padding: '10px 12px', color: C.text, outline: 'none', fontSize: 13, resize: 'none' }} />
+  </Card>
+)}
         <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 10 }}>MODE DE PAIEMENT</div>
         <div style={{ display: "flex", gap: 8 }}>
           {[["carte", "💳 Carte / Apple Pay", "Paiement par carte", C.purple], ["stripe", "🏦 Prélèvement SEPA", "Automatique via IBAN", C.teal]].map(([v, label, sub, col]) => (
@@ -1794,6 +1824,107 @@ async function generateDebtPDF({ debtorName, debtorEmail, debtorIban, debtorAddr
   return pdfBytes;
 }
 
+function DiscoverView({ session, onBack, onOpen }) {
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadPublicGroups();
+  }, []);
+
+  const loadPublicGroups = async () => {
+    const { data } = await supabase
+      .from('groups')
+      .select('*, group_members(count)')
+      .eq('is_public', true)
+      .eq('archived', false)
+      .eq('started', false);
+    setGroups(data || []);
+    setLoading(false);
+  };
+
+  const requestJoin = async (group) => {
+    const { data: existing } = await supabase
+      .from('invitations')
+      .select('id')
+      .eq('group_id', group.id)
+      .eq('email', session.user.email)
+      .single();
+
+    if (existing) {
+      alert('Vous avez déjà envoyé une demande pour ce groupe !');
+      return;
+    }
+
+    await supabase.from('invitations').insert({
+      group_id: group.id,
+      email: session.user.email,
+      status: 'requested',
+    });
+
+    await supabase.from('notifications').insert({
+      user_id: group.creator_id,
+      group_id: group.id,
+      type: 'join_request',
+      message: `🙋 ${session.user.email} souhaite rejoindre ${group.name}`,
+    });
+
+    alert('✅ Demande envoyée au créateur !');
+  };
+
+  return (
+    <div style={{ maxWidth: 480, margin: '0 auto', padding: '32px 16px', background: C.bg, minHeight: '100vh' }}>
+      <button onClick={onBack} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', marginBottom: 20, fontSize: 13 }}>← Retour</button>
+      
+      <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 24, fontWeight: 800, color: C.text, marginBottom: 8 }}>
+        🌍 Découvrir
+      </div>
+      <div style={{ color: C.muted, fontSize: 13, marginBottom: 24 }}>Rejoignez une tontine publique</div>
+
+      {loading && <div style={{ color: C.muted, textAlign: 'center' }}>⏳ Chargement...</div>}
+
+      {!loading && groups.length === 0 && (
+        <div style={{ textAlign: 'center', padding: 40 }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
+          <div style={{ color: C.muted }}>Aucune tontine publique disponible</div>
+        </div>
+      )}
+
+      {groups.map(g => (
+        <Card key={g.id} style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+            <div>
+              <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 16, textTransform: 'capitalize' }}>{g.name}</div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
+                {g.type === 'tontine' ? '🔄 Tontine' : '🎯 Cagnotte'} · {g.amount}€/mois · {g.max_members} membres max
+              </div>
+            </div>
+            <Badge color={C.teal}>{g.pay_method === 'stripe' ? '⚡ SEPA' : '💳 Carte'}</Badge>
+          </div>
+
+          {g.description && (
+            <div style={{ fontSize: 12, color: C.muted, marginBottom: 12, lineHeight: 1.5, background: C.subtle, borderRadius: 8, padding: '8px 12px' }}>
+              {g.description}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 11, color: C.muted }}>
+              {g.group_members?.[0]?.count || 1}/{g.max_members} membres
+            </div>
+            {g.creator_id !== session?.user?.id && (
+              <button onClick={() => requestJoin(g)}
+                style={{ background: C.accent, border: 'none', borderRadius: 8, padding: '8px 16px', color: '#080b12', fontWeight: 700, cursor: 'pointer', fontSize: 12 }}>
+                🙋 Demander à rejoindre
+              </button>
+            )}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 function TontineChat({ group, session, onClose }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: `Bonjour ! Je suis votre assistant Tontine 🫂 Je connais votre groupe "${group.name}". Comment puis-je vous aider ?` }
@@ -1907,6 +2038,7 @@ const [notifications, setNotifications] = useState([]);
 const [unreadCount, setUnreadCount] = useState(0);
 const [showNotifications, setShowNotifications] = useState(false);
 const [showSettings, setShowSettings] = useState(false);
+const [showDiscover, setShowDiscover] = useState(false);
 const [showOnboarding, setShowOnboarding] = useState(false);
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -2075,7 +2207,9 @@ if (notifs) {
       iban: groupData.iban || null,
       max_members: groupData.maxMembers || 10,
       guarantee_percent: groupData.guaranteePercent || 10,
-guarantee_balance: 0,
+      guarantee_balance: 0,
+      is_public: groupData.isPublic || false,
+      description: groupData.description || '',
       started: false,
       creator_id: session.user.id 
     }])
@@ -2273,6 +2407,7 @@ if (joinToken && session) return <JoinGroup token={joinToken} session={session} 
   </div>
 );
   if (showSettings) return <Settings session={session} onBack={() => setShowSettings(false)} />;
+  if (showDiscover) return <DiscoverView session={session} onBack={() => setShowDiscover(false)} />;
   if (showNotifications) return <NotificationsView 
   notifications={notifications}
   session={session}
@@ -2297,7 +2432,7 @@ if (joinToken && session) return <JoinGroup token={joinToken} session={session} 
     const props = { group: g, onBack: () => setView("home"), onUpdate: updateGroup, session };
     return g.type === "tontine" ? <TontineDetail {...props} /> : <CagnotteDetail {...props} />;
   }
-  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} onProfile={() => setShowProfile(true)} profile={profile} onNotifications={() => setShowNotifications(true)}onSettings={() => setShowSettings(true)}session={session} unreadCount={unreadCount}/>;
+  return <HomeView groups={groups} onNew={() => setView("create")} onOpen={id => { setActiveId(id); setView("detail"); }} onLogout={() => supabase.auth.signOut()} onProfile={() => setShowProfile(true)} profile={profile} onNotifications={() => setShowNotifications(true)}onSettings={() => setShowSettings(true)}onDiscover={() => setShowDiscover(true)}session={session} unreadCount={unreadCount}/>;
 }
 
 
