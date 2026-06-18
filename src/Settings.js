@@ -15,14 +15,30 @@ export default function Settings({ session, onBack }) {
   if (showLegal) return <Legal type={showLegal} onBack={() => setShowLegal(null)} />;
 
   const deleteAccount = async () => {
-    if (window.confirm('Supprimer définitivement votre compte ? Cette action est irréversible.')) {
-      setDeleting(true);
-      await supabase.from('profiles').delete().eq('id', session.user.id);
-      await supabase.from('group_members').delete().eq('user_id', session.user.id);
-      await supabase.from('notifications').delete().eq('user_id', session.user.id);
-      await supabase.auth.signOut();
-    }
-  };
+  // Vérifier si membre d'une tontine active
+  const { data: activeGroups } = await supabase
+    .from('group_members')
+    .select('group_id, groups(name, archived, started)')
+    .eq('user_id', session.user.id)
+    .eq('active', true);
+
+  const activeTontines = (activeGroups || []).filter(g => 
+    g.groups && !g.groups.archived && g.groups.started
+  );
+
+  if (activeTontines.length > 0) {
+    alert(`❌ Impossible de supprimer votre compte — vous êtes membre actif de ${activeTontines.length} tontine(s) en cours :\n${activeTontines.map(g => `• ${g.groups.name}`).join('\n')}`);
+    return;
+  }
+
+  if (window.confirm('Supprimer définitivement votre compte ? Cette action est irréversible.')) {
+    setDeleting(true);
+    await supabase.from('profiles').delete().eq('id', session.user.id);
+    await supabase.from('group_members').delete().eq('user_id', session.user.id);
+    await supabase.from('notifications').delete().eq('user_id', session.user.id);
+    await supabase.auth.signOut();
+  }
+};
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', padding: '32px 16px', background: C.bg, minHeight: '100vh' }}>
