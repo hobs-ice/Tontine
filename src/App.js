@@ -114,7 +114,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
   const tontines = groups.filter(g => g.type === "tontine" && !g.archived);
   const cagnottes = groups.filter(g => g.type === "cagnotte" && !g.archived);
   const archives = groups.filter(g => g.archived);
-  const [showDiscover, setShowDiscover] = useState(false);
+  
 
   function GroupCard({ g }) {
     const active = g.members.filter(m => m.active);
