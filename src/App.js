@@ -831,9 +831,128 @@ Réponds UNIQUEMENT en JSON: {"members":[{"name":"...","risk":"Faible|Moyen|Éle
   );
 }
 
+function RatingBadge({ email }) {
+  const [rating, setRating] = useState(null);
+
+  useEffect(() => {
+    supabase.from('profiles').select('avg_rating, rating_count').eq('email', email).single()
+      .then(({ data }) => { if (data?.avg_rating) setRating(data); });
+  }, [email]);
+
+  if (!rating) return <div style={{ fontSize: 11, color: C.muted }}>Pas encore noté</div>;
+
+  return (
+    <div style={{ fontSize: 11, color: C.accent }}>
+      {'⭐'.repeat(Math.round(rating.avg_rating))} {rating.avg_rating}/5 ({rating.rating_count} avis)
+    </div>
+  );
+}
+
+function RatingForm({ group, members, session, myId }) {
+  const [ratings, setRatings] = useState({});
+  const [submitted, setSubmitted] = useState(false);
+  const [alreadyRated, setAlreadyRated] = useState(false);
+
+  useEffect(() => {
+    checkIfRated();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const checkIfRated = async () => {
+    const { data } = await supabase
+      .from('ratings')
+      .select('id')
+      .eq('rater_id', session.user.id)
+      .eq('group_id', group.id);
+    if (data && data.length > 0) setAlreadyRated(true);
+  };
+
+  const submitRatings = async () => {
+    const otherMembers = members.filter(m => m.user_id !== myId);
+    for (const m of otherMembers) {
+      if (ratings[m.id]) {
+        await supabase.from('ratings').insert({
+          rater_id: session.user.id,
+          rated_id: m.user_id,
+          group_id: group.id,
+          rating: ratings[m.id],
+        });
+
+        // Mettre à jour la moyenne
+        const { data: allRatings } = await supabase
+          .from('ratings')
+          .select('rating')
+          .eq('rated_id', m.user_id);
+
+        if (allRatings) {
+          const avg = allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length;
+          await supabase.from('profiles').update({
+            avg_rating: Math.round(avg * 10) / 10,
+            rating_count: allRatings.length,
+          }).eq('id', m.user_id);
+        }
+      }
+    }
+    setSubmitted(true);
+  };
+
+  if (alreadyRated || submitted) return (
+    <Card style={{ marginBottom: 12, textAlign: 'center', padding: 20 }}>
+      <div style={{ fontSize: 20, marginBottom: 8 }}>⭐</div>
+      <div style={{ fontSize: 13, color: C.muted }}>Vous avez déjà noté les membres !</div>
+    </Card>
+  );
+
+  const otherMembers = members.filter(m => m.user_id !== myId);
+  if (otherMembers.length === 0) return null;
+
+  return (
+    <Card style={{ marginBottom: 12, borderColor: C.accent + "40" }}>
+      <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
+        ⭐ Noter les membres
+      </div>
+      {otherMembers.map(m => (
+        <div key={m.id} style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <Avatar name={m.name} size={28} />
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{m.name}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[1, 2, 3, 4, 5].map(star => (
+              <button key={star} onClick={() => setRatings({ ...ratings, [m.id]: star })}
+                style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', opacity: (ratings[m.id] || 0) >= star ? 1 : 0.3 }}>
+                ⭐
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+      <button onClick={submitRatings}
+        disabled={otherMembers.some(m => !ratings[m.id])}
+        style={{ width: '100%', background: otherMembers.some(m => !ratings[m.id]) ? C.subtle : C.accent, border: 'none', borderRadius: 10, padding: '10px', color: otherMembers.some(m => !ratings[m.id]) ? C.muted : '#080b12', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
+        ✅ Envoyer les notes
+      </button>
+    </Card>
+  );
+}
+
 function TontineDetail({ group, onBack, onUpdate, session }) {
   const [tab, setTab] = useState("dashboard");
   const [showChat, setShowChat] = useState(false);
+  const [joinRequests, setJoinRequests] = useState([]);
+  useEffect(() => {
+  if (group.creator_id === session?.user?.id) loadJoinRequests();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
+const loadJoinRequests = async () => {
+  const { data } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('group_id', group.id)
+    .eq('status', 'requested');
+  setJoinRequests(data || []);
+};
   const [showStripePayment, setShowStripePayment] = useState(null);
   const { name, amount, members, currentMonth, payments, banVotes, payMethod } = group;
   const active = members.filter(m => m.active);
@@ -1054,8 +1173,68 @@ const netAmount = Math.round((pot - guaranteeAmount) * 0.96 * 100) / 100;
       }
     }} disabled={active.length < 2}
 style={{ background: active.length < 2 ? C.subtle : C.green, border: 'none', borderRadius: 10, padding: '12px 32px', color: active.length < 2 ? C.muted : '#080b12', fontWeight: 800, cursor: active.length < 2 ? 'not-allowed' : 'pointer', fontSize: 14, opacity: active.length < 2 ? 0.5 : 1 }}>
-      🚀 Démarrer la tontine
+        🚀 Démarrer la tontine
     </button>
+    {active.length < 2 && (
+      <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>
+        Invitez au moins 1 membre pour démarrer !
+      </div>
+    )}
+
+    {group.creator_id === session?.user?.id && joinRequests.length > 0 && (
+  <Card style={{ marginBottom: 12, borderColor: C.teal + "40" }}>
+    <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 700, fontSize: 14, marginBottom: 12 }}>
+      🙋 Demandes d'adhésion ({joinRequests.length})
+    </div>
+    {joinRequests.map((req, i) => (
+      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, padding: '8px 10px', background: C.subtle, borderRadius: 10 }}>
+        <Avatar name={req.email} size={32} />
+        <div style={{ flex: 1 }}>
+  <div style={{ fontSize: 13 }}>{req.email}</div>
+  <RatingBadge email={req.email} />
+</div>
+        <button onClick={async () => {
+          // Accepter
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('email', req.email) 
+            .single();
+          
+          await supabase.from('group_members').insert({
+            group_id: group.id,
+            user_id: profile?.id || null,
+            name: profile?.name || req.email.split('@')[0],
+            is_creator: false,
+            active: true,
+            join_order: active.length + 1,
+          });
+
+          await supabase.from('invitations').update({ status: 'accepted' }).eq('id', req.id);
+          
+          await supabase.from('notifications').insert({
+            user_id: null,
+            group_id: group.id,
+            type: 'join_accepted',
+            message: `✅ Votre demande pour rejoindre ${group.name} a été acceptée !`,
+          });
+
+          setJoinRequests(joinRequests.filter(r => r.id !== req.id));
+          onUpdate({ ...group });
+        }} style={{ background: C.green, border: 'none', borderRadius: 8, padding: '6px 12px', color: '#080b12', fontWeight: 700, cursor: 'pointer', fontSize: 11 }}>
+          ✅
+        </button>
+        <button onClick={async () => {
+          await supabase.from('invitations').update({ status: 'declined' }).eq('id', req.id);
+          setJoinRequests(joinRequests.filter(r => r.id !== req.id));
+        }} style={{ background: C.redDim, border: `1px solid ${C.red}40`, borderRadius: 8, padding: '6px 12px', color: C.red, fontWeight: 700, cursor: 'pointer', fontSize: 11 }}>
+          ❌
+        </button>
+      </div>
+    ))}
+  </Card>
+)}
+    
     {active.length < 2 && (
   <div style={{ fontSize: 11, color: C.muted, marginTop: 8 }}>
     Invitez au moins 1 membre pour démarrer !
@@ -1343,6 +1522,9 @@ style={{ background: active.length < 2 ? C.subtle : C.green, border: 'none', bor
       </button>
     )}
   </Card>
+)}
+{group.archived && (
+  <RatingForm group={group} members={active} session={session} myId={myId} />
 )}
   </div>
 )}
@@ -2232,19 +2414,34 @@ const membersToInsert = members.map((m, i) => ({
   user_id: m.isCreator ? session.user.id : null,
 }));
     await supabase.from('group_members').insert(membersToInsert);
-    // Créer un compte Stripe Connect pour le groupe
-const stripeRes = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/stripe-connect', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    action: 'create_group_account',
-    groupId: newGroup.id,
-    groupName: newGroup.name,
-  })
-});
-const { accountId } = await stripeRes.json();
-if (accountId) {
-  await supabase.from('groups').update({ stripe_account_id: accountId }).eq('id', newGroup.id);
+    // Vérifier si le créateur a déjà un compte Connect actif
+const { data: creatorGroups } = await supabase
+  .from('groups')
+  .select('stripe_account_id, stripe_onboarding_complete')
+  .eq('creator_id', session.user.id)
+  .eq('stripe_onboarding_complete', true)
+  .limit(1)
+  .single();
+
+if (creatorGroups?.stripe_account_id) {
+  await supabase.from('groups').update({ 
+    stripe_account_id: creatorGroups.stripe_account_id,
+    stripe_onboarding_complete: true,
+  }).eq('id', newGroup.id);
+} else {
+  const stripeRes = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/stripe-connect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'create_group_account',
+      groupId: newGroup.id,
+      groupName: newGroup.name,
+    })
+  });
+  const { accountId: newAccountId } = await stripeRes.json();
+  if (newAccountId) {
+    await supabase.from('groups').update({ stripe_account_id: newAccountId }).eq('id', newGroup.id);
+  }
 }
     await loadGroups();
   } else {
