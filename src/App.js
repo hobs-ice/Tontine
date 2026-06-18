@@ -179,7 +179,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
             )}
           </button>
           
-          <button onClick={onSettings} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>⚙️</button>
+          
           <button onClick={onProfile} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${C.accent}` }} />
@@ -242,6 +242,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
               </div>
             )}
             <div style={{ position: 'sticky', bottom: 16, marginTop: 8, display: 'flex', gap: 8 }}>
+  <button onClick={onSettings} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: '0 16px', color: C.text, cursor: 'pointer', fontSize: 20 }}>⚙️</button>
   <Btn onClick={onNew} style={{ flex: 1, boxShadow: '0 4px 24px rgba(240,180,41,0.3)' }}>+ Nouveau groupe</Btn>
   <button onClick={onDiscover} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: '0 16px', color: C.text, cursor: 'pointer', fontSize: 20 }}>🌍</button>
 </div>
@@ -379,14 +380,7 @@ const [description, setDescription] = useState('');
           ))}
         </div>
       </Card>
-      {payMethod === 'carte' && (
-  <Card style={{ marginBottom: 10 }}>
-    <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 6 }}>IBAN (optionnel)</div>
-    <input value={iban} onChange={e => setIban(e.target.value.toUpperCase())}
-      placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
-      style={{ width: "100%", background: C.subtle, border: "none", borderRadius: 8, padding: "10px 12px", color: C.text, outline: "none", fontSize: 13, letterSpacing: ".05em" }} />
-  </Card>
-)}
+      
 
 <Card style={{ marginBottom: 10 }}>
   <div style={{ fontSize: 10, color: C.muted, fontWeight: 700, letterSpacing: ".06em", marginBottom: 8 }}>GARANTIE (%)</div>

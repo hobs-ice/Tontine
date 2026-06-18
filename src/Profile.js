@@ -55,6 +55,16 @@ export default function Profile({ session, onBack, isOnboarding = false }) {
 
   const saveProfile = async () => {
     setSaving(true);
+// Validation IBAN
+if (iban) {
+  const ibanClean = iban.replace(/\s/g, '');
+  if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/.test(ibanClean) || ibanClean.length < 15 || ibanClean.length > 34) {
+    setMessage('❌ IBAN invalide — vérifiez le format');
+    setSaving(false);
+    return;
+  }
+}
+
     // Vérifier doublon IBAN
 if (iban && iban !== '') {
   const { data: existingIban } = await supabase
