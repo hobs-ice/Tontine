@@ -165,7 +165,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
       
       {/* HEADER FIXE */}
       <div style={{ position: 'sticky', top: 0, background: C.bg, zIndex: 100, borderBottom: `1px solid ${C.cardBorder}`, paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-        <button onClick={onDiscover} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 20 }}>🌍</button>
+        
         {/* NAVBAR */}
         <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 800, letterSpacing: "-.02em" }}>🫂 Tontine</div>
@@ -178,7 +178,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
               </span>
             )}
           </button>
-          <button onClick={onDiscover} style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: 20 }}>🌍</button>
+          
           <button onClick={onSettings} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20 }}>⚙️</button>
           <button onClick={onProfile} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             {profile?.avatar_url ? (
@@ -241,8 +241,9 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
                 ))}
               </div>
             )}
-            <div style={{ position: 'sticky', bottom: 16, marginTop: 8 }}>
-  <Btn onClick={onNew} style={{ width: "100%", boxShadow: '0 4px 24px rgba(240,180,41,0.3)' }}>+ Nouveau groupe</Btn>
+            <div style={{ position: 'sticky', bottom: 16, marginTop: 8, display: 'flex', gap: 8 }}>
+  <Btn onClick={onNew} style={{ flex: 1, boxShadow: '0 4px 24px rgba(240,180,41,0.3)' }}>+ Nouveau groupe</Btn>
+  <button onClick={onDiscover} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: '0 16px', color: C.text, cursor: 'pointer', fontSize: 20 }}>🌍</button>
 </div>
           </>
         )}
