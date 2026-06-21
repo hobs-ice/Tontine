@@ -151,7 +151,24 @@ if (recipientProfile?.iban && fullGroup.stripe_account_id) {
                 type: "payout",
                 message: `🎉 ${netAmount}€ virés sur votre compte pour ${fullGroup.name} !`,
               });
-
+// Email au bénéficiaire
+const { data: recipientUser } = await supabase.auth.admin.getUserById(recipientMember.user_id);
+if (recipientUser?.user?.email) {
+  await fetch(`${SUPABASE_URL}/functions/v1/send-emails`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+    },
+    body: JSON.stringify({
+      type: 'payout',
+      email: recipientUser.user.email,
+      name: recipientProfile.name || recipientMember.name,
+      groupName: fullGroup.name,
+      amount: netAmount,
+    })
+  });
+}
               // Archiver automatiquement si cycle terminé
 const newMonth = fullGroup.current_month + 1;
 if (newMonth > activeMembers.length) {

@@ -33,19 +33,22 @@ const [showLegal, setShowLegal] = useState(null);
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) setMessage(error.message);
         else {
-          
   setMessage('Vérifie ton email pour confirmer ton compte !');
-  if (iban) {
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData?.user) {
-      await supabase.from('profiles').upsert({
-  id: userData.user.id,
-  iban: iban.trim(),
-  email: userData.user.email,
-});
-    }
+  // Email de bienvenue
+  const { data: userData } = await supabase.auth.getUser();
+  if (userData?.user) {
+    await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/send-emails', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'welcome',
+        email: userData.user.email,
+        name: userData.user.email.split('@')[0],
+      })
+    });
   }
 }
+
       }
     } catch (err) {
       setMessage(err.message);
