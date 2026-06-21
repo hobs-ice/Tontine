@@ -42,7 +42,7 @@ const [showLegal, setShowLegal] = useState(null);
   // Email de bienvenue
   const { data: userData } = await supabase.auth.getUser();
   if (userData?.user) {
-    await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/send-emails', {
+    const res = await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/send-emails', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
