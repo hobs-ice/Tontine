@@ -32,8 +32,13 @@ const [showLegal, setShowLegal] = useState(null);
       } else {
         const { error } = await supabase.auth.signUp({ email, password });
         if (error) setMessage(error.message);
-        else {
+ 
+  else {
   setMessage('Vérifie ton email pour confirmer ton compte !');
+  console.log('Inscription réussie - envoi email bienvenue');
+ 
+  
+  
   // Email de bienvenue
   const { data: userData } = await supabase.auth.getUser();
   if (userData?.user) {
@@ -46,9 +51,8 @@ const [showLegal, setShowLegal] = useState(null);
         name: userData.user.email.split('@')[0],
       })
     });
-  }
-}
-
+   }
+        }
       }
     } catch (err) {
       setMessage(err.message);
