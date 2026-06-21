@@ -188,11 +188,15 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
             )}
           </button>
           
+          
         </div>
+        
         </div>
       </div>
+      
 
       <div style={{ padding: '16px' }}>
+      
 
         {/* SALUTATION */}
         <div style={{ marginBottom: 24 }}>
@@ -201,6 +205,7 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
           </div>
           <div style={{ color: C.muted, fontSize: 13, marginTop: 4 }}>L'épargne collective entre amis</div>
         </div>
+        
 
         {groups.filter(g => !g.archived).length === 0 ? (
           <div style={{ textAlign: "center", padding: '48px 24px' }}>
@@ -241,17 +246,20 @@ function HomeView({ groups, onNew, onOpen, onLogout, onProfile, profile, unreadC
                 ))}
               </div>
             )}
-            <div style={{ position: 'sticky', bottom: 16, marginTop: 8, display: 'flex', gap: 8 }}>
-  <button onClick={onSettings} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: '0 16px', color: C.text, cursor: 'pointer', fontSize: 20 }}>⚙️</button>
-  <Btn onClick={onNew} style={{ flex: 1, boxShadow: '0 4px 24px rgba(240,180,41,0.3)' }}>+ Nouveau groupe</Btn>
-  <button onClick={onDiscover} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: '0 16px', color: C.text, cursor: 'pointer', fontSize: 20 }}>🌍</button>
-</div>
-          </>
+            </>
         )}
+
+        {/* Boutons toujours visibles */}
+        <div style={{ position: 'sticky', bottom: 16, marginTop: 8, display: 'flex', gap: 8 }}>
+          <button onClick={onSettings} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: '0 16px', color: C.text, cursor: 'pointer', fontSize: 20 }}>⚙️</button>
+          <Btn onClick={onNew} style={{ flex: 1, boxShadow: '0 4px 24px rgba(240,180,41,0.3)' }}>+ Nouveau groupe</Btn>
+          <button onClick={onDiscover} style={{ background: C.card, border: `1px solid ${C.cardBorder}`, borderRadius: 14, padding: '0 16px', color: C.text, cursor: 'pointer', fontSize: 20 }}>🌍</button>
+        </div>
       </div>
     </div>
   );
 }
+
 
 
 // ── CREATE ────────────────────────────────────────────────────
