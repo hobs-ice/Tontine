@@ -142,8 +142,8 @@ if (iban && iban !== '' && stripeCustomerId) {
 
     if (!error) {
       setMessage('✅ Profil sauvegardé !');
-      if (isOnboarding) setTimeout(() => onBack(), 1000);
-      if (isOnboarding && !error) {
+      
+      if (isOnboarding && name.trim()) {
   await fetch('https://pgquynoaxjtyhbrfjbzg.supabase.co/functions/v1/send-emails', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
