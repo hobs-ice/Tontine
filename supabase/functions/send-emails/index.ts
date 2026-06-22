@@ -15,7 +15,7 @@ async function sendEmail(to: string, subject: string, html: string) {
       "Authorization": `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "Tontine <noreply@tontineapp.com>",
+      from: "Tontine <noreply@ton-tine.com>",
       to,
       subject,
       html,
@@ -52,7 +52,7 @@ serve(async (req) => {
             <li>✅ Gérer vos versements automatiquement</li>
           </ul>
           <div style="text-align: center; margin-top: 32px;">
-            <a href="https://tontineapp.com" style="background: #f0b429; color: #080b12; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700;">
+            <a href="https://ton-tine.com" style="background: #f0b429; color: #080b12; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700;">
               🚀 Commencer
             </a>
           </div>
@@ -77,7 +77,7 @@ serve(async (req) => {
           <p>Montant : <strong style="color: #10b981; font-size: 20px;">${amount}€</strong></p>
           <p style="color: #64748b; font-size: 12px;">Le virement arrivera sur votre compte dans 3-5 jours ouvrés.</p>
           <div style="text-align: center; margin-top: 32px;">
-            <a href="https://tontineapp.com" style="background: #f0b429; color: #080b12; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700;">
+            <a href="https://ton-tine.com" style="background: #f0b429; color: #080b12; padding: 14px 32px; border-radius: 10px; text-decoration: none; font-weight: 700;">
               📊 Voir mon groupe
             </a>
           </div>
