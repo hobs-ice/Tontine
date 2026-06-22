@@ -43,7 +43,7 @@ serve(async (req) => {
             <div style="font-size: 48px;">🫂</div>
             <h1 style="color: #f0b429; font-size: 28px; margin: 16px 0;">Bienvenue sur Tontine !</h1>
           </div>
-          <p>Bonjour ${name || ''} 👋</p>
+          <p>Bonjour ${name ? name.split(' ')[0] : ''} 👋</p>
           <p>Votre compte Tontine a été créé avec succès !</p>
           <p>Vous pouvez maintenant :</p>
           <ul>
