@@ -29,6 +29,8 @@ serve(async (req) => {
   }
 
   const { type, email, name, groupName, amount } = await req.json();
+  console.log("Received:", type, email);
+  
 
   try {
     if (type === "welcome") {
