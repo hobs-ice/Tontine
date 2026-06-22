@@ -66,7 +66,7 @@ if (iban) {
 }
 // Validation téléphone
 if (phone && phone.trim()) {
-  const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+  const phoneRegex = /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/;
   if (!phoneRegex.test(phone.replace(/\s/g, ''))) {
     setMessage('❌ Numéro de téléphone invalide');
     setSaving(false);
